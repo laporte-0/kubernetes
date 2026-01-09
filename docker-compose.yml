@@ -1,12 +1,31 @@
 services:
   mongodb:
     image: mongo:7
-    container_name: mongodb-ch2
+    container_name: mongodb-ch3
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - appnet
+
+  web:
+    build: .
+    container_name: flask-ch3
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      MONGO_HOST: mongodb
+      MONGO_PORT: "27017"
+      MONGO_DB: "net4255"
+      MONGO_COLLECTION: "visits"
+    ports:
+      - "5000:5000"
+    networks:
+      - appnet
 
 volumes:
   mongo_data:
+
+networks:
+  appnet:
