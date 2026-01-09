@@ -1,26 +1,48 @@
 services:
   mongodb:
     image: mongo:7
-    container_name: mongodb-ch3
+    container_name: mongodb-ch4
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
     networks:
       - appnet
 
-  web:
+  web_db:
     build: .
-    container_name: flask-ch3
+    container_name: flask-db
     restart: unless-stopped
     depends_on:
       - mongodb
     environment:
+      APP_MODULE: "app"
       MONGO_HOST: mongodb
       MONGO_PORT: "27017"
       MONGO_DB: "net4255"
       MONGO_COLLECTION: "visits"
+    networks:
+      - appnet
+
+  web_nodb:
+    build: .
+    container_name: flask-nodb
+    restart: unless-stopped
+    environment:
+      APP_MODULE: "app_nodb"
+    networks:
+      - appnet
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-lb
+    restart: unless-stopped
+    depends_on:
+      - web_db
+      - web_nodb
     ports:
-      - "5000:5000"
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - appnet
 

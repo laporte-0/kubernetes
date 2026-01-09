@@ -9,6 +9,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
+COPY app_nodb.py .
 
 EXPOSE 5000
-CMD ["flask", "--app", "app", "run", "--host=0.0.0.0", "--port=5000"]
+
+ENV APP_MODULE=app
+
+CMD ["sh", "-c", "flask --app ${APP_MODULE} run --host=0.0.0.0 --port=5000"]
