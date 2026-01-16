@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webdb
+  namespace: azaabar
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webdb
+  template:
+    metadata:
+      labels:
+        app: webdb
+    spec:
+      containers:
+      - name: webdb
+        image: azerzaa/flask-net4255:ch4
+        env:
+        - name: APP_MODULE
+          value: "app"
+        - name: MONGO_HOST
+          value: "mongodb"     # KubeDNS
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DB
+          value: "net4255"
+        - name: MONGO_COLLECTION
+          value: "visits"
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "100Mi"
+          limits:
+            cpu: "200m"
+            memory: "200Mi"
