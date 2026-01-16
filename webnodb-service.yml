@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webnodb
+  namespace: azaabar
+spec:
+  type: ClusterIP
+  selector:
+    app: webnodb
+  ports:
+  - port: 5000
+    targetPort: 5000
