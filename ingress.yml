@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ch10-web
+  namespace: azaabar
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: webnodb.azaabar.net4255.luxbulb.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: webnodb
+            port:
+              number: 5000
+  - host: webdb.azaabar.net4255.luxbulb.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: webdb
+            port:
+              number: 5000
