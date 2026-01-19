@@ -1,0 +1,8 @@
+Installation complete.
+
+If ingress is enabled, your services should be reachable at:
+  - http://{{ .Values.ingress.hosts.webnodb }}/
+  - http://{{ .Values.ingress.hosts.webdb }}/
+
+To check resources:
+  kubectl -n {{ .Release.Namespace }} get deploy,svc,ingress

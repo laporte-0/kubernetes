@@ -1,0 +1,35 @@
+# Default values for the NET4255 lab.
+
+image:
+  repository: azerzaa/flask-net4255
+  tag: ch4
+  pullPolicy: IfNotPresent
+
+webnodb:
+  replicas: 1
+
+webdb:
+  replicas: 3
+  mongo:
+    db: net4255
+    collection: visits
+
+mongodb:
+  enabled: true
+  image: mongo:7
+  port: 27017
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "100Mi"
+  limits:
+    cpu: "200m"
+    memory: "200Mi"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    webnodb: webnodb.azaabar.net4255.luxbulb.org
+    webdb: webdb.azaabar.net4255.luxbulb.org
