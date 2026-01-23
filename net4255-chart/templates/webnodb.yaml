@@ -6,7 +6,9 @@ metadata:
     {{- include "net4255.labels" . | nindent 4 }}
     app: webnodb
 spec:
+  {{- if not .Values.webnodb.autoscaling.enabled }}
   replicas: {{ .Values.webnodb.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app: webnodb

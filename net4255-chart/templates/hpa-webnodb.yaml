@@ -1,0 +1,23 @@
+{{- if .Values.webnodb.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: webnodb-hpa
+  labels:
+    {{- include "net4255.labels" . | nindent 4 }}
+    app: webnodb
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: webnodb
+  minReplicas: {{ .Values.webnodb.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.webnodb.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.webnodb.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
