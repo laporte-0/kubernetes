@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 NAME = "Azer Hassine Zaabar"
 PROJECT = "net4255-flask-docker"
-VERSION = "V1 (no DB)"
+VERSION = "V2 (no DB)"
 
 def get_client_ip():
     return request.headers.get("X-Forwarded-For", request.remote_addr)

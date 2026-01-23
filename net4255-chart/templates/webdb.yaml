@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: webdb
-          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          image: {{ printf "%s:%s" .Values.image.repository .Values.webdb.tag | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: APP_MODULE

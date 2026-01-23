@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 NAME = "Azer Hassine Zaabar"
 PROJECT = "net4255-flask-docker"
-VERSION = "V2"
+VERSION = "V3"
 
 MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))

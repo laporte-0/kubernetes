@@ -2,14 +2,15 @@
 
 image:
   repository: azerzaa/flask-net4255
-  tag: ch4
   pullPolicy: IfNotPresent
 
 webnodb:
   replicas: 1
+  tag: webnodb-v2
 
 webdb:
   replicas: 3
+  tag: webdb-v3
   mongo:
     db: net4255
     collection: visits
