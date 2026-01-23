@@ -1,0 +1,17 @@
+{{- if .Values.mongodb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "net4255.fullname" . }}-mongodb-headless
+  labels:
+    {{- include "net4255.labels" . | nindent 4 }}
+    app: {{ include "net4255.fullname" . }}-mongodb
+spec:
+  clusterIP: None
+  ports:
+    - name: mongo
+      port: {{ .Values.mongodb.port }}
+      targetPort: {{ .Values.mongodb.port }}
+  selector:
+    app: {{ include "net4255.fullname" . }}-mongodb
+{{- end }}

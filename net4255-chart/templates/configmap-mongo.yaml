@@ -5,5 +5,7 @@ metadata:
   labels:
     {{- include "net4255.labels" . | nindent 4 }}
 data:
-  MONGO_HOST: "mongodb"
+  # Stable DNS for the first pod of the StatefulSet via the headless Service.
+  # Example (namespace azaabar): <release>-mongodb-0.<release>-mongodb-headless.azaabar.svc.cluster.local
+  MONGO_HOST: "{{ include "net4255.fullname" . }}-mongodb-0.{{ include "net4255.fullname" . }}-mongodb-headless.{{ .Release.Namespace }}.svc.cluster.local"
   MONGO_PORT: "{{ .Values.mongodb.port }}"

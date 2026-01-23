@@ -16,8 +16,12 @@ webdb:
 
 mongodb:
   enabled: true
+  replicas: 1
   image: mongo:7
   port: 27017
+  storage:
+    size: 1024Mi
+    storageClassName: longhorn
 
 resources:
   requests:

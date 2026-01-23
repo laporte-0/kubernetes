@@ -1,0 +1,35 @@
+{{- if .Values.mongodb.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "net4255.fullname" . }}-mongodb
+spec:
+  serviceName: {{ include "net4255.fullname" . }}-mongodb-headless
+  replicas: {{ .Values.mongodb.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "net4255.fullname" . }}-mongodb
+  template:
+    metadata:
+      labels:
+        app: {{ include "net4255.fullname" . }}-mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: {{ .Values.mongodb.image }}
+          args: ["--bind_ip_all"]
+          ports:
+            - containerPort: {{ .Values.mongodb.port }}
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.mongodb.storage.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.storage.size }}
+{{- end }}
