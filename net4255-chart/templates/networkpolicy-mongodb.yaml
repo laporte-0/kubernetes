@@ -1,0 +1,23 @@
+{{- if .Values.mongodb.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mongodb-network-policy
+  labels:
+    {{- include "net4255.labels" . | nindent 4 }}
+    app: net4255-mongodb
+spec:
+  podSelector:
+    matchLabels:
+      app: net4255-mongodb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: webdb
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mongodb.port }}
+{{- end }}

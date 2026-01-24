@@ -33,6 +33,8 @@ mongodb:
   storage:
     size: 1024Mi
     storageClassName: longhorn
+  networkPolicy:
+    enabled: true
 
 resources:
   requests:
