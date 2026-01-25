@@ -5,11 +5,11 @@ metadata:
   name: mongodb-network-policy
   labels:
     {{- include "net4255.labels" . | nindent 4 }}
-    app: net4255-mongodb
+    app: {{ include "net4255.fullname" . }}-mongodb
 spec:
   podSelector:
     matchLabels:
-      app: net4255-mongodb
+      app: {{ include "net4255.fullname" . }}-mongodb
   policyTypes:
     - Ingress
   ingress:
@@ -17,6 +17,9 @@ spec:
         - podSelector:
             matchLabels:
               app: webdb
+        - podSelector:
+            matchLabels:
+              app: {{ include "net4255.fullname" . }}-mongodb
       ports:
         - protocol: TCP
           port: {{ .Values.mongodb.port }}

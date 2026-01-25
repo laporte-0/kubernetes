@@ -9,6 +9,11 @@ spec:
   {{- if not .Values.webnodb.autoscaling.enabled }}
   replicas: {{ .Values.webnodb.replicas }}
   {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: webnodb
