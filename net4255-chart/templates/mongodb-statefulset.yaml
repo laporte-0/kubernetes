@@ -14,6 +14,9 @@ spec:
       labels:
         app: {{ include "net4255.fullname" . }}-mongodb
     spec:
+      volumes:
+      - name: mongo-db
+        emptyDir: {}
       containers:
         - name: mongodb
           image: {{ .Values.mongodb.image }}
@@ -25,16 +28,25 @@ spec:
             - "0.25"
           ports:
             - containerPort: {{ .Values.mongodb.port }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.mongodb.port }}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: {{ .Values.mongodb.resources.requests.cpu }}
+              memory: {{ .Values.mongodb.resources.requests.memory }}
             limits:
-              cpu: "200m"
-              memory: "256Mi"
+              cpu: {{ .Values.mongodb.resources.limits.cpu }}
+              memory: {{ .Values.mongodb.resources.limits.memory }}
           volumeMounts:
-            - name: mongo-data
+            - name: mongo-db
               mountPath: /data/db
+            - name: mongo-data
+              mountPath: /data/pvc
   volumeClaimTemplates:
     - metadata:
         name: mongo-data

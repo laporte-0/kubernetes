@@ -5,7 +5,7 @@ image:
   pullPolicy: IfNotPresent
 
 webnodb:
-  replicas: 1
+  replicas: 0
   tag: webnodb-v2
   autoscaling:
     enabled: false
@@ -15,11 +15,11 @@ webnodb:
 
 webdb:
   replicas: 1
-  tag: webdb-v3
+  tag: webdb-v4
   autoscaling:
-    enabled: false
+    enabled: true
     minReplicas: 1
-    maxReplicas: 1
+    maxReplicas: 10
     targetCPUUtilizationPercentage: 60
   mongo:
     db: net4255
@@ -33,11 +33,19 @@ mongodb:
   replicaSet:
     name: "rs0"
   storage:
-    size: 512Mi
-    storageClassName: longhorn
+    size: 0.1Gi
+    storageClassName: longhorn-static
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
   networkPolicy:
     enabled: true
 
+# Default resources for webdb and webnodb pods
 resources:
   requests:
     cpu: "50m"

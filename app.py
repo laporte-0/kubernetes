@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import socket
 from datetime import datetime, timezone
 from pymongo import MongoClient
@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 NAME = "Azer Hassine Zaabar"
 PROJECT = "net4255-flask-docker"
-VERSION = "V3"
+VERSION = "V4"
 
 MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
@@ -80,3 +80,19 @@ def home():
       </body>
     </html>
     """
+
+@app.route("/api/db")
+def api_db():
+    limit = request.args.get('limit', default=10, type=int)
+    
+    try:
+        client = MongoClient(host=MONGO_HOST, port=MONGO_PORT, serverSelectionTimeoutMS=2000)
+        col = client[MONGO_DB][MONGO_COLLECTION]
+        
+        cursor = col.find({}, {"_id": 0}).sort("date", -1).limit(limit)
+        records = list(cursor)
+        
+        return jsonify(records)
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
