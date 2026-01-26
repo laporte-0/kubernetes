@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 NAME = "Azer Hassine Zaabar"
 PROJECT = "net4255-flask-docker"
-VERSION = "V4"
+VERSION = "V5"
 
 MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
@@ -23,23 +23,16 @@ def home():
     hostname = socket.gethostname()
     now = datetime.now(timezone.utc).astimezone()
 
-    records = []
-    error = None
-
+    # Still save the visit to database
     try:
         client = MongoClient(host=MONGO_HOST, port=MONGO_PORT, serverSelectionTimeoutMS=2000)
         col = client[MONGO_DB][MONGO_COLLECTION]
-
         col.insert_one({
             "client_ip": get_client_ip(),
             "date": now.isoformat()
         })
-
-        cursor = col.find({}, {"_id": 0}).sort("date", -1).limit(10)
-        records = list(cursor)
-
     except Exception as e:
-        error = str(e)
+        pass  # Silent fail for demo
 
     return f"""
     <!doctype html>
@@ -47,6 +40,7 @@ def home():
       <head>
         <meta charset="utf-8" />
         <title>{PROJECT}</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <style>
           body {{ font-family: Arial, sans-serif; margin: 40px; }}
           .card {{ max-width: 900px; padding: 20px; border: 1px solid #ddd; border-radius: 12px; }}
@@ -56,6 +50,25 @@ def home():
           th {{ background: #fafafa; }}
           .err {{ color: #b00020; }}
         </style>
+        <script>
+          $(document).ready(async function() {{
+            try {{
+              const response = await fetch('/api/db?limit=10');
+              const data = await response.json();
+              
+              const tbody = document.getElementById('records-body');
+              tbody.innerHTML = '';
+              
+              data.forEach(record => {{
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><code>${{record.client_ip || ''}}</code></td><td><code>${{record.date || ''}}</code></td>`;
+                tbody.appendChild(row);
+              }});
+            }} catch (error) {{
+              document.getElementById('error-msg').textContent = 'Error loading data: ' + error.message;
+            }}
+          }});
+        </script>
       </head>
       <body>
         <div class="card">
@@ -65,15 +78,15 @@ def home():
           <p><b>Server hostname:</b> <code>{hostname}</code></p>
           <p><b>Current date:</b> <code>{now.strftime("%Y-%m-%d %H:%M:%S %Z")}</code></p>
 
-          <h2>Last 10 records (MongoDB)</h2>
-          {"<p class='err'><b>DB error:</b> " + error + "</p>" if error else ""}
+          <h2>Last 10 records (MongoDB) - Loaded via JavaScript</h2>
+          <p id="error-msg" class="err"></p>
 
           <table>
             <thead>
               <tr><th>client_ip</th><th>date</th></tr>
             </thead>
-            <tbody>
-              {''.join([f"<tr><td><code>{r.get('client_ip','')}</code></td><td><code>{r.get('date','')}</code></td></tr>" for r in records])}
+            <tbody id="records-body">
+              <tr><td colspan="2">Loading...</td></tr>
             </tbody>
           </table>
         </div>
