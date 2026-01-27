@@ -44,6 +44,10 @@ spec:
               value: {{ .Values.webdb.mongo.db | quote }}
             - name: MONGO_COLLECTION
               value: {{ .Values.webdb.mongo.collection | quote }}
+            - name: REDIS_HOST
+              value: "net4255-redis"
+            - name: REDIS_PORT
+              value: "6379"
           ports:
             - containerPort: 5000
           resources:

@@ -2,21 +2,31 @@ from flask import Flask, request, jsonify
 import socket
 from datetime import datetime, timezone
 from pymongo import MongoClient
+import redis
 import os
 
 app = Flask(__name__)
 
 NAME = "Azer Hassine Zaabar"
 PROJECT = "net4255-flask-docker"
-VERSION = "V5"
+VERSION = "V6"
 
 MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
 MONGO_DB = os.getenv("MONGO_DB", "net4255")
 MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "visits")
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
 def get_client_ip():
     return request.headers.get("X-Forwarded-For", request.remote_addr)
+
+def get_redis_client():
+    try:
+        return redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    except:
+        return None
 
 @app.route("/")
 def home():
@@ -52,6 +62,16 @@ def home():
         </style>
         <script>
           $(document).ready(async function() {{
+            // Increment visit count
+            try {{
+              const visitResponse = await fetch('/api/v1/visit', {{method: 'POST'}});
+              const visitData = await visitResponse.json();
+              document.getElementById('visit-count').textContent = visitData.visits || '?';
+            }} catch (error) {{
+              document.getElementById('visit-count').textContent = 'Error';
+            }}
+            
+            // Load database records
             try {{
               const response = await fetch('/api/db?limit=10');
               const data = await response.json();
@@ -77,6 +97,7 @@ def home():
           <p><b>Version:</b> <code>{VERSION}</code></p>
           <p><b>Server hostname:</b> <code>{hostname}</code></p>
           <p><b>Current date:</b> <code>{now.strftime("%Y-%m-%d %H:%M:%S %Z")}</code></p>
+          <p><b>Total visits (Redis):</b> <code id="visit-count">Loading...</code></p>
 
           <h2>Last 10 records (MongoDB) - Loaded via JavaScript</h2>
           <p id="error-msg" class="err"></p>
@@ -107,5 +128,31 @@ def api_db():
         
         return jsonify(records)
     
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/v1/visit", methods=["GET"])
+def get_visits():
+    """Get total visit count from Redis"""
+    try:
+        r = get_redis_client()
+        if r:
+            count = r.get("visit_count")
+            return jsonify({"visits": int(count) if count else 0})
+        else:
+            return jsonify({"error": "Redis not available"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/v1/visit", methods=["POST"])
+def increment_visit():
+    """Increment and return visit count"""
+    try:
+        r = get_redis_client()
+        if r:
+            count = r.incr("visit_count")
+            return jsonify({"visits": count})
+        else:
+            return jsonify({"error": "Redis not available"}), 503
     except Exception as e:
         return jsonify({"error": str(e)}), 500

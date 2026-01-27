@@ -15,7 +15,7 @@ webnodb:
 
 webdb:
   replicas: 1
-  tag: webdb-v5
+  tag: webdb-v6
   autoscaling:
     enabled: true
     minReplicas: 1
