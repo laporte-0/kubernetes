@@ -58,5 +58,6 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-    webnodb: webnodb.azaabar.net4255.luxbulb.org
-    webdb: webdb.azaabar.net4255.luxbulb.org
+    # Replace with your own domain: <service>.<namespace>.<cluster-domain>
+    webnodb: webnodb.your-namespace.your-cluster.example.com
+    webdb: webdb.your-namespace.your-cluster.example.com
