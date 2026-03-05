@@ -1,0 +1,54 @@
+# Role: prometheus_stack — Deploy kube-prometheus-stack via Helm
+---
+- name: "Add prometheus-community Helm repo"
+  ansible.builtin.command:
+    cmd: "helm repo add prometheus-community {{ prometheus_stack_chart_repo }}"
+  register: repo_add
+  changed_when: "'has been added' in repo_add.stdout"
+  failed_when: false
+
+- name: "Update Helm repos"
+  ansible.builtin.command:
+    cmd: "helm repo update"
+  changed_when: false
+
+- name: "Create monitoring namespace"
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ prometheus_stack_namespace }}"
+    state: present
+    context: "{{ k8s_context | default(omit) }}"
+
+- name: "Deploy kube-prometheus-stack"
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade --install {{ prometheus_stack_release }}
+      prometheus-community/kube-prometheus-stack
+      --namespace {{ prometheus_stack_namespace }}
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+      {{ '--version ' + prometheus_stack_chart_version if prometheus_stack_chart_version else '' }}
+      --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+      --set prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues=false
+      --timeout 600s
+      --wait
+  register: prom_result
+
+- name: "Show Prometheus stack deploy output"
+  ansible.builtin.debug:
+    msg: "{{ prom_result.stdout_lines }}"
+
+- name: "Verify Prometheus is running"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl get pods
+      --namespace {{ prometheus_stack_namespace }}
+      {{ '--context ' + k8s_context if k8s_context else '' }}
+      -l app.kubernetes.io/name=prometheus
+      -o jsonpath='{.items[*].status.phase}'
+  register: prom_pods
+  changed_when: false
+
+- name: "Prometheus pods status"
+  ansible.builtin.debug:
+    msg: "Prometheus pods: {{ prom_pods.stdout }}"

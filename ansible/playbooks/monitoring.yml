@@ -1,0 +1,54 @@
+# Playbook: monitoring.yml — Deploy Prometheus stack and verify integration
+# Usage:
+#   ansible-playbook playbooks/monitoring.yml
+---
+- name: "NET4255 — Prometheus Monitoring Stack Deployment"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: "═══ Phase 1: Deploy kube-prometheus-stack ═══"
+      ansible.builtin.include_role:
+        name: prometheus_stack
+
+    - name: "═══ Phase 2: Verify ServiceMonitor discovery ═══"
+      ansible.builtin.command:
+        cmd: >-
+          kubectl get servicemonitors
+          --namespace {{ k8s_namespace }}
+          {{ '--context ' + k8s_context if k8s_context else '' }}
+          -o name
+      register: svc_monitors
+      changed_when: false
+      ignore_errors: true
+
+    - name: "Show discovered ServiceMonitors"
+      ansible.builtin.debug:
+        msg: "{{ svc_monitors.stdout_lines | default(['No ServiceMonitors found']) }}"
+
+    - name: "═══ Phase 3: Verify PrometheusRules ═══"
+      ansible.builtin.command:
+        cmd: >-
+          kubectl get prometheusrules
+          --namespace {{ k8s_namespace }}
+          {{ '--context ' + k8s_context if k8s_context else '' }}
+          -o name
+      register: prom_rules
+      changed_when: false
+      ignore_errors: true
+
+    - name: "Show PrometheusRules"
+      ansible.builtin.debug:
+        msg: "{{ prom_rules.stdout_lines | default(['No PrometheusRules found']) }}"
+
+    - name: "Monitoring stack deployment complete"
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║    MONITORING STACK DEPLOYED             ║
+          ╠══════════════════════════════════════════╣
+          ║ Prometheus:    {{ prometheus_stack_namespace }}/{{ prometheus_stack_release }}
+          ║ ServiceMonitors: {{ svc_monitors.stdout_lines | default([]) | length }} found
+          ║ Alert Rules:     {{ prom_rules.stdout_lines | default([]) | length }} found
+          ╚══════════════════════════════════════════╝
