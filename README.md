@@ -1,10 +1,10 @@
 # High Availability Flask Web Application on Kubernetes
 
-> A production-ready Flask web application demonstrating cloud-native deployment patterns, container orchestration, and distributed systems architecture on Kubernetes.
+> A production-ready Flask web application demonstrating cloud-native deployment patterns, container orchestration, observability, and lifecycle automation on Kubernetes.
 
 ## 📋 Project Overview
 
-This project showcases the complete journey of building, containerizing, and deploying a high-availability web application using modern DevOps practices. Starting from a simple Flask application, it evolves into a fully distributed, auto-scaling system with MongoDB replication, Redis caching, and REST API architecture.
+This project showcases the complete journey of building, containerizing, and deploying a high-availability web application using modern DevOps practices. Starting from a simple Flask application, it evolves into a fully distributed, auto-scaling system with MongoDB replication, Redis caching, Prometheus observability, and Ansible-driven lifecycle automation.
 
 **Key Features:**
 - 🚀 Auto-scaling Flask web application with HPA (Horizontal Pod Autoscaler)
@@ -15,7 +15,9 @@ This project showcases the complete journey of building, containerizing, and dep
 - ☸️ Kubernetes deployment with Helm charts
 - 📊 Load balancing with NGINX
 - 🔒 Network policies for security
-- 📈 Resource management and monitoring
+- 📈 Prometheus metrics, ServiceMonitor, and alert rules
+- 🤖 Ansible automation for deployment, upgrades, and rollback
+- 🩺 Health check endpoints and post-deployment verification
 
 ## 🛠️ Technology Stack
 
@@ -40,14 +42,21 @@ This project showcases the complete journey of building, containerizing, and dep
 - MetalLB (Bare Metal Load Balancer)
 - Longhorn (Persistent Storage)
 
-**Monitoring & Scaling:**
+**Observability & Scaling:**
+- Prometheus (`prometheus_client` + `kube-prometheus-stack`)
+- ServiceMonitor & PrometheusRule (Helm CRDs)
 - Kubernetes HPA (Horizontal Pod Autoscaler)
-- Liveness/Readiness Probes
+- Liveness/Readiness Probes (`/health` endpoint)
 - Resource Quotas & Limits
+
+**Automation:**
+- Ansible 2.14+ (roles, inventories, playbooks)
+- Helm lifecycle management (install, upgrade, rollback)
+- Post-deployment health verification
 
 ## 🏗️ Architecture
 
-### Final Architecture (Challenge 20)
+### Final Architecture (Challenge 28)
 
 ```
                                     Internet
@@ -59,6 +68,7 @@ This project showcases the complete journey of building, containerizing, and dep
                     |                                     |
               [webdb Service]                    [webnodb Service]
               (ClusterIP)                        (ClusterIP)
+              /metrics + /health                         |
                     |                                     |
             +-------+-------+                            |||
             |       |       |                            |||
@@ -73,8 +83,15 @@ This project showcases the complete journey of building, containerizing, and dep
    (3 members: PRIMARY      (Visit Counter)
     + 2 SECONDARY)
         |
-   [PersistentVolume]
-    (Longhorn Storage)
+   [PersistentVolume]              [Prometheus + Grafana]
+    (Longhorn Storage)              (kube-prometheus-stack)
+                                    - ServiceMonitor → /metrics
+                                    - PrometheusRule (6 alerts)
+
+    [Ansible Automation]
+    ├── deploy.yml      → Namespace + Helm install + verify + health check
+    ├── upgrade.yml     → Image tag upgrade + rollback on failure
+    └── monitoring.yml  → kube-prometheus-stack deployment
 ```
 
 ### Component Breakdown
@@ -115,10 +132,10 @@ This project showcases the complete journey of building, containerizing, and dep
 2. **Build Docker images:**
    ```bash
    # Build webdb (with database)
-   docker build -t <your-registry>/flask-net4255:webdb-v6 .
+   docker build -t <your-registry>/flask-net4255:webdb-v7 .
    
    # Push to registry
-   docker push <your-registry>/flask-net4255:webdb-v6
+   docker push <your-registry>/flask-net4255:webdb-v7
    ```
 
 3. **Run with Docker Compose (local testing):**
@@ -142,7 +159,13 @@ This project showcases the complete journey of building, containerizing, and dep
 
 3. **Deploy with Helm:**
    ```bash
-   helm install ch18 ./net4255-chart -n <your-namespace>
+   helm install net4255 ./net4255-chart -n <your-namespace>
+   ```
+
+   Or with **Ansible** (recommended):
+   ```bash
+   cd ansible/
+   ansible-playbook playbooks/deploy.yml
    ```
 
 4. **Verify deployment:**
@@ -171,39 +194,61 @@ This project showcases the complete journey of building, containerizing, and dep
 
 ```
 .
-├── app.py                          # Main Flask app (with MongoDB & Redis)
+├── app.py                          # Main Flask app V7 (MongoDB + Redis + Prometheus)
 ├── app_nodb.py                     # Flask app without database
 ├── Dockerfile                      # Multi-purpose Dockerfile (Alpine-based)
-├── requirements.txt                # Python dependencies
+├── requirements.txt                # Python dependencies (flask, pymongo, redis, prometheus_client)
 ├── docker-compose.yml              # Local Docker Compose setup
 │
-├── net4255-chart/                  # Helm Chart for Kubernetes
+├── net4255-chart/                  # Helm Chart for Kubernetes (v0.2.0)
 │   ├── Chart.yaml
-│   ├── values.yaml                 # Configuration values
+│   ├── values.yaml                 # Configuration values (app, mongodb, prometheus)
 │   └── templates/
+│       ├── webdb.yaml              # Deployment + Service (with /health probes)
+│       ├── webnodb.yaml            # Deployment + Service
 │       ├── mongodb-statefulset.yaml
 │       ├── mongodb-headless-service.yaml
 │       ├── redis-deployment.yaml
 │       ├── redis-service.yaml
-│       ├── webdb.yaml              # Deployment & Service
-│       ├── webnodb.yaml
 │       ├── ingress.yaml
 │       ├── configmap-mongo.yaml
-│       └── _helpers.tpl
+│       ├── hpa-webdb.yaml          # Horizontal Pod Autoscaler
+│       ├── hpa-webnodb.yaml
+│       ├── networkpolicy-mongodb.yaml
+│       ├── servicemonitor-webdb.yaml   # Prometheus ServiceMonitor
+│       ├── prometheusrule.yaml         # Prometheus alert rules (6 alerts)
+│       ├── _helpers.tpl
+│       └── NOTES.txt
 │
-├── challenge16/                    # Pure kubectl YAML files
-│   ├── mongodb-deployment.yml
-│   ├── mongodb-service.yml
-│   ├── webdb-deployment.yml
-│   └── webdb-service.yml
+├── ansible/                        # Ansible automation for lifecycle management
+│   ├── ansible.cfg
+│   ├── requirements.yml            # Galaxy collections (kubernetes.core)
+│   ├── inventories/
+│   │   ├── dev/                    # Development environment
+│   │   │   ├── hosts.yml
+│   │   │   └── group_vars/all.yml
+│   │   └── prod/                   # Production environment
+│   │       ├── hosts.yml
+│   │       └── group_vars/all.yml
+│   ├── playbooks/
+│   │   ├── deploy.yml              # Full deployment pipeline
+│   │   ├── upgrade.yml             # Image tag upgrade + rollback
+│   │   └── monitoring.yml          # kube-prometheus-stack deployment
+│   └── roles/
+│       ├── namespace/              # K8s namespace provisioning
+│       ├── helm_deploy/            # Helm install/upgrade
+│       ├── helm_upgrade/           # Image tag lifecycle
+│       ├── verify_rollout/         # kubectl rollout status
+│       ├── health_check/           # Web + MongoDB + Redis checks
+│       ├── helm_rollback/          # Rollback on failure
+│       └── prometheus_stack/       # kube-prometheus-stack deploy
 │
-├── nginx/
-│   └── nginx.conf                  # NGINX load balancer config
-│
-└── schemas/                        # Architecture diagrams
-    ├── schema_ch1.png
-    ├── schema_ch2.png
-    └── ...
+├── challenge16/                    # Pure kubectl YAML files (Ch16)
+├── nginx/                          # NGINX load balancer config
+├── docs/schemas/                   # Architecture diagrams
+├── challenges.md                   # Detailed log of all challenges (5-28)
+├── README_COURSE.md                # Original course instructions (Télécom SudParis)
+└── README.md                       # This file
 ```
 
 ## 🎯 Implementation Milestones (Challenges)
@@ -238,6 +283,18 @@ Each challenge represents a learning milestone in building production-ready clou
 - ✅ **Ch19**: JavaScript client-side data fetching
 - ✅ **Ch20**: Redis cache for distributed state
 
+### Phase 5: Prometheus Observability (Challenges 21-23)
+- ✅ **Ch21**: Flask Prometheus instrumentation (`/metrics`, `/health`, V7)
+- ✅ **Ch22**: Helm ServiceMonitor + health probes + chart v0.2.0
+- ✅ **Ch23**: PrometheusRule alert rules (6 production alerts)
+
+### Phase 6: Ansible Automation (Challenges 24-28)
+- ✅ **Ch24**: Ansible project structure (inventories, roles, config)
+- ✅ **Ch25**: Helm deploy playbook (namespace + install + rollout verify)
+- ✅ **Ch26**: Upgrade & rollback automation (image tag lifecycle)
+- ✅ **Ch27**: Post-deployment health checks (web, MongoDB, Redis)
+- ✅ **Ch28**: kube-prometheus-stack deployment playbook
+
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -260,7 +317,7 @@ Key configurations in `net4255-chart/values.yaml`:
 ```yaml
 webdb:
   replicas: 1
-  tag: webdb-v6
+  tag: webdb-v7
   autoscaling:
     enabled: true
     minReplicas: 1
@@ -270,8 +327,16 @@ webdb:
 mongodb:
   enabled: true
   replicas: 3
-  storage: 100Mi
-  storageClassName: longhorn
+  storage: 0.1Gi
+  storageClassName: longhorn-static
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  alertRules:
+    enabled: true
 
 resources:
   requests:
@@ -282,7 +347,33 @@ resources:
     memory: "128Mi"
 ```
 
-## 📊 Monitoring & Scaling
+## 📊 Monitoring & Observability
+
+### Prometheus Metrics
+
+The Flask app (V7) exposes Prometheus metrics at `/metrics`:
+
+```bash
+# Scrape metrics locally
+curl http://localhost:5000/metrics
+
+# Key metrics exposed:
+# flask_http_requests_total          — Counter (method, endpoint, http_status)
+# flask_http_request_duration_seconds — Histogram (method, endpoint)
+# flask_http_requests_in_progress    — Gauge (method, endpoint)
+# flask_app_info                     — Info (version, name, author)
+```
+
+### Prometheus Alerts
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `PodRestarting` | >3 restarts in 15 min | warning |
+| `PodCrashLooping` | CrashLoopBackOff for 5 min | critical |
+| `HighCPUUsage` | CPU >85% of limit for 10 min | warning |
+| `HighMemoryUsage` | Memory >90% of limit for 10 min | warning |
+| `ReplicaMismatch` | Desired != available for 10 min | critical |
+| `WebdbEndpointDown` | Scrape target down for 3 min | critical |
 
 ### Auto-Scaling Configuration
 
@@ -389,6 +480,30 @@ Returns the main HTML page with:
 - Visit counter (from Redis)
 - Last 10 database records (loaded via JavaScript)
 
+#### GET /metrics
+Prometheus scrape endpoint. Returns all application metrics in OpenMetrics format.
+
+**Response:** `text/plain` (Prometheus exposition format)
+```
+flask_http_requests_total{endpoint="/",http_status="200",method="GET"} 42.0
+flask_http_request_duration_seconds_bucket{endpoint="/",le="0.005",method="GET"} 40.0
+flask_app_info{author="Azer Hassine Zaabar",name="net4255-flask-docker",version="V7"} 1.0
+```
+
+#### GET /health
+Health check endpoint for Kubernetes probes and monitoring.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "version": "V7",
+  "hostname": "webdb-abc123",
+  "mongodb": "connected",
+  "redis": "connected"
+}
+```
+
 #### GET /api/db?limit=N
 Returns the last N records from MongoDB.
 
@@ -442,10 +557,11 @@ Increments and returns the visit count.
 - **Observability**: Probes, logging, monitoring
 
 ### DevOps Practices
-- **IaC**: Infrastructure as Code with Helm
+- **IaC**: Infrastructure as Code with Helm + Ansible
 - **GitOps**: Version-controlled deployments
 - **CI/CD**: Docker builds, image tagging, rolling updates
-- **Monitoring**: Resource usage, application health
+- **Monitoring**: Prometheus metrics, alerting, Grafana dashboards
+- **Lifecycle Management**: Ansible-driven upgrades, rollback, health verification
 
 ## 🤝 Contributing
 
@@ -457,8 +573,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-This project was developed as part of the NET4255 course at Télécom SudParis, demonstrating practical implementation of high-availability web services and Kubernetes orchestration.
+This project was developed as part of the NET4255 course at Télécom SudParis (Challenges 1-20), and extended with personal work on Prometheus observability and Ansible automation (Challenges 21-28). See [`README_COURSE.md`](README_COURSE.md) for the original course instructions and [`challenges.md`](challenges.md) for detailed logs of each challenge.
 
 ---
 
-**Built with ❤️ using Flask, Docker, and Kubernetes**
+**Built with ❤️ using Flask, Docker, Kubernetes, Prometheus, and Ansible**
