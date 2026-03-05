@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: helm_deploy
+  author: Azer Hassine Zaabar
+  description: Install or upgrade the net4255 Helm chart on Kubernetes
+  min_ansible_version: "2.14"
+dependencies: []

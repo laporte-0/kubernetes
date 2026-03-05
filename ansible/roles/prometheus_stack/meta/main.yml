@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: prometheus_stack
+  author: Azer Hassine Zaabar
+  description: Deploy kube-prometheus-stack (Prometheus + Grafana + Alertmanager) via Helm
+  min_ansible_version: "2.14"
+dependencies: []

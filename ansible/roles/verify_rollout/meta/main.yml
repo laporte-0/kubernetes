@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: verify_rollout
+  author: Azer Hassine Zaabar
+  description: Verify Kubernetes rollout status for all NET4255 components
+  min_ansible_version: "2.14"
+dependencies: []

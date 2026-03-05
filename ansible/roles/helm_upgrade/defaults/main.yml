@@ -1,0 +1,3 @@
+---
+upgrade_image_tag_webdb: ""   # set via --extra-vars or inventory
+upgrade_image_tag_webnodb: "" # set via --extra-vars or inventory

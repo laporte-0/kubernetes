@@ -1,0 +1,4 @@
+---
+health_check_url: "http://webdb.azaabar.net4255.luxbulb.org/health"
+health_check_retries: 5
+health_check_delay: 10

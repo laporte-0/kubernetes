@@ -1,0 +1,2 @@
+---
+rollback_trigger: false  # set to true to trigger rollback

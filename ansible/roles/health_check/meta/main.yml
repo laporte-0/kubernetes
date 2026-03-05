@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: health_check
+  author: Azer Hassine Zaabar
+  description: Post-deployment health checks (web, MongoDB, Redis)
+  min_ansible_version: "2.14"
+dependencies: []

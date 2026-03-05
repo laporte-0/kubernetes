@@ -1,0 +1,55 @@
+# Development environment variables
+---
+
+# ──────────────────────────────────────────────
+# Kubernetes
+# ──────────────────────────────────────────────
+k8s_namespace: "azaabar"
+k8s_context: ""  # leave empty to use current kubectl context
+
+# ──────────────────────────────────────────────
+# Helm - NET4255 chart
+# ──────────────────────────────────────────────
+helm_release_name: "net4255"
+helm_chart_path: "{{ playbook_dir }}/../../net4255-chart"
+helm_values_file: ""  # optional override values file
+helm_timeout: "300s"
+helm_atomic: true       # auto-rollback on failed install/upgrade
+helm_wait: true         # wait for all resources to be ready
+
+# ──────────────────────────────────────────────
+# Application image
+# ──────────────────────────────────────────────
+app_image_repository: "azerzaa/flask-net4255"
+app_image_tag_webdb: "webdb-v7"
+app_image_tag_webnodb: "webnodb-v2"
+
+# ──────────────────────────────────────────────
+# MongoDB
+# ──────────────────────────────────────────────
+mongodb_replicas: 3
+mongodb_storage_class: "longhorn-static"
+mongodb_storage_size: "0.1Gi"
+
+# ──────────────────────────────────────────────
+# Ingress
+# ──────────────────────────────────────────────
+ingress_class: "nginx"
+ingress_host_webdb: "webdb.azaabar.net4255.luxbulb.org"
+ingress_host_webnodb: "webnodb.azaabar.net4255.luxbulb.org"
+
+# ──────────────────────────────────────────────
+# Prometheus / Monitoring
+# ──────────────────────────────────────────────
+prometheus_enabled: true
+prometheus_stack_release: "kube-prometheus-stack"
+prometheus_stack_namespace: "monitoring"
+prometheus_stack_chart_repo: "https://prometheus-community.github.io/helm-charts"
+prometheus_stack_chart_version: ""  # leave empty for latest
+
+# ──────────────────────────────────────────────
+# Health check endpoints
+# ──────────────────────────────────────────────
+health_check_url: "http://{{ ingress_host_webdb }}/health"
+health_check_retries: 5
+health_check_delay: 10

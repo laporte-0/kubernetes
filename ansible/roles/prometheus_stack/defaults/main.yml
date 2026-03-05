@@ -1,0 +1,5 @@
+---
+prometheus_stack_release: "kube-prometheus-stack"
+prometheus_stack_namespace: "monitoring"
+prometheus_stack_chart_repo: "https://prometheus-community.github.io/helm-charts"
+prometheus_stack_chart_version: ""

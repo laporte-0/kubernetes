@@ -1,0 +1,55 @@
+# Production environment variables
+# Override dev defaults with production-specific values
+---
+
+# ──────────────────────────────────────────────
+# Kubernetes
+# ──────────────────────────────────────────────
+k8s_namespace: "azaabar-prod"
+k8s_context: ""  # set your production kubectl context here
+
+# ──────────────────────────────────────────────
+# Helm
+# ──────────────────────────────────────────────
+helm_release_name: "net4255"
+helm_chart_path: "{{ playbook_dir }}/../../net4255-chart"
+helm_timeout: "600s"
+helm_atomic: true
+helm_wait: true
+
+# ──────────────────────────────────────────────
+# Application image — production tags
+# ──────────────────────────────────────────────
+app_image_repository: "azerzaa/flask-net4255"
+app_image_tag_webdb: "webdb-v7"
+app_image_tag_webnodb: "webnodb-v2"
+
+# ──────────────────────────────────────────────
+# MongoDB
+# ──────────────────────────────────────────────
+mongodb_replicas: 3
+mongodb_storage_class: "longhorn"
+mongodb_storage_size: "1Gi"
+
+# ──────────────────────────────────────────────
+# Ingress — production domains
+# ──────────────────────────────────────────────
+ingress_class: "nginx"
+ingress_host_webdb: "webdb.azaabar-prod.net4255.luxbulb.org"
+ingress_host_webnodb: "webnodb.azaabar-prod.net4255.luxbulb.org"
+
+# ──────────────────────────────────────────────
+# Prometheus
+# ──────────────────────────────────────────────
+prometheus_enabled: true
+prometheus_stack_release: "kube-prometheus-stack"
+prometheus_stack_namespace: "monitoring"
+prometheus_stack_chart_repo: "https://prometheus-community.github.io/helm-charts"
+prometheus_stack_chart_version: ""
+
+# ──────────────────────────────────────────────
+# Health check
+# ──────────────────────────────────────────────
+health_check_url: "http://{{ ingress_host_webdb }}/health"
+health_check_retries: 10
+health_check_delay: 15

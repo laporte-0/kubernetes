@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: namespace
+  author: Azer Hassine Zaabar
+  description: Ensure Kubernetes namespace exists and is active
+  min_ansible_version: "2.14"
+dependencies: []

@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: helm_upgrade
+  author: Azer Hassine Zaabar
+  description: Upgrade Flask app image tags via Helm (obsolescence management)
+  min_ansible_version: "2.14"
+dependencies: []
