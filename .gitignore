@@ -111,3 +111,4 @@ yarn-error.log*
 # Personal notes (uncomment if needed)
 # notes.md
 # TODO.md
+__pycache__/

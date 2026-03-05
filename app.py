@@ -1,15 +1,48 @@
 from flask import Flask, request, jsonify
 import socket
+import time
 from datetime import datetime, timezone
 from pymongo import MongoClient
 import redis
 import os
+from prometheus_client import (
+    Counter, Histogram, Gauge, Info,
+    generate_latest, CONTENT_TYPE_LATEST, REGISTRY
+)
 
 app = Flask(__name__)
 
 NAME = "Azer Hassine Zaabar"
 PROJECT = "net4255-flask-docker"
-VERSION = "V6"
+VERSION = "V7"
+
+# ──────────────────────────────────────────────
+# Prometheus Metrics
+# ──────────────────────────────────────────────
+REQUEST_COUNT = Counter(
+    "flask_http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "http_status"]
+)
+REQUEST_LATENCY = Histogram(
+    "flask_http_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "endpoint"]
+)
+REQUESTS_IN_PROGRESS = Gauge(
+    "flask_http_requests_in_progress",
+    "Number of HTTP requests currently being processed",
+    ["method", "endpoint"]
+)
+APP_INFO = Info(
+    "flask_app",
+    "Application metadata"
+)
+APP_INFO.info({
+    "version": VERSION,
+    "name": PROJECT,
+    "author": NAME
+})
 
 MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
 MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
@@ -27,6 +60,65 @@ def get_redis_client():
         return redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
     except:
         return None
+
+# ──────────────────────────────────────────────
+# Prometheus: Automatic request instrumentation
+# ──────────────────────────────────────────────
+@app.before_request
+def _start_timer():
+    """Record request start time and increment in-progress gauge."""
+    if request.path == "/metrics":
+        return  # Don't instrument the metrics endpoint itself
+    request._prom_start_time = time.time()
+    REQUESTS_IN_PROGRESS.labels(method=request.method, endpoint=request.path).inc()
+
+@app.after_request
+def _record_metrics(response):
+    """Record request duration and count after each request."""
+    if request.path == "/metrics":
+        return response
+    latency = time.time() - getattr(request, "_prom_start_time", time.time())
+    REQUEST_LATENCY.labels(method=request.method, endpoint=request.path).observe(latency)
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.path,
+        http_status=response.status_code
+    ).inc()
+    REQUESTS_IN_PROGRESS.labels(method=request.method, endpoint=request.path).dec()
+    return response
+
+# ──────────────────────────────────────────────
+# Prometheus /metrics endpoint
+# ──────────────────────────────────────────────
+@app.route("/metrics")
+def metrics():
+    """Expose Prometheus metrics."""
+    return generate_latest(REGISTRY), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+# ──────────────────────────────────────────────
+# Health check endpoint
+# ──────────────────────────────────────────────
+@app.route("/health")
+def health():
+    """Simple health check for Kubernetes probes."""
+    health_status = {"status": "healthy", "version": VERSION, "hostname": socket.gethostname()}
+    # Check MongoDB connectivity
+    try:
+        client = MongoClient(host=MONGO_HOST, port=MONGO_PORT, serverSelectionTimeoutMS=2000)
+        client.admin.command("ping")
+        health_status["mongodb"] = "connected"
+    except Exception:
+        health_status["mongodb"] = "disconnected"
+    # Check Redis connectivity
+    try:
+        r = get_redis_client()
+        if r and r.ping():
+            health_status["redis"] = "connected"
+        else:
+            health_status["redis"] = "disconnected"
+    except Exception:
+        health_status["redis"] = "disconnected"
+    return jsonify(health_status)
 
 @app.route("/")
 def home():
