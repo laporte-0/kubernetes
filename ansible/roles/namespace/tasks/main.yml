@@ -1,0 +1,25 @@
+# Role: namespace — Ensure Kubernetes namespace exists
+---
+- name: "Ensure namespace '{{ k8s_namespace }}' exists"
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ k8s_namespace }}"
+    state: present
+    context: "{{ k8s_context | default(omit) }}"
+
+- name: "Verify namespace is active"
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: "{{ k8s_namespace }}"
+    context: "{{ k8s_context | default(omit) }}"
+  register: ns_info
+
+- name: "Confirm namespace is Active"
+  ansible.builtin.assert:
+    that:
+      - ns_info.resources | length > 0
+      - ns_info.resources[0].status.phase == "Active"
+    fail_msg: "Namespace {{ k8s_namespace }} is not in Active state"
+    success_msg: "Namespace {{ k8s_namespace }} is Active"

@@ -1,0 +1,44 @@
+# Playbook: deploy.yml — Full deployment of net4255 platform
+# Usage:
+#   ansible-playbook playbooks/deploy.yml
+#   ansible-playbook playbooks/deploy.yml -i inventories/prod/hosts.yml
+---
+- name: "NET4255 — Full Platform Deployment"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: "═══ Phase 1: Namespace Provisioning ═══"
+      ansible.builtin.include_role:
+        name: namespace
+
+    - name: "═══ Phase 2: Helm Deploy ═══"
+      ansible.builtin.include_role:
+        name: helm_deploy
+
+    - name: "═══ Phase 3: Rollout Verification ═══"
+      ansible.builtin.include_role:
+        name: verify_rollout
+
+    - name: "═══ Phase 4: Health Checks ═══"
+      ansible.builtin.include_role:
+        name: health_check
+
+    - name: "═══ Phase 5: Rollback (if needed) ═══"
+      ansible.builtin.include_role:
+        name: helm_rollback
+      vars:
+        rollback_trigger: "{{ not (rollout_ok | default(true)) or not (health_ok | default(true)) }}"
+
+    - name: "Deployment complete"
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║      DEPLOYMENT PIPELINE COMPLETE        ║
+          ╠══════════════════════════════════════════╣
+          ║ Namespace:   {{ k8s_namespace }}
+          ║ Release:     {{ helm_release_name }}
+          ║ Rollout:     {{ 'PASSED' if rollout_ok | default(true) else 'FAILED → ROLLBACK' }}
+          ║ Health:      {{ 'PASSED' if health_ok | default(true) else 'FAILED → ROLLBACK' }}
+          ╚══════════════════════════════════════════╝

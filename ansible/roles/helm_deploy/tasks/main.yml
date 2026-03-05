@@ -1,0 +1,47 @@
+# Role: helm_deploy — Install or upgrade the net4255 Helm chart
+---
+- name: "Add/update Helm chart dependencies (if any)"
+  ansible.builtin.command:
+    cmd: "helm dependency update {{ helm_chart_path }}"
+  changed_when: false
+  failed_when: false
+
+- name: "Deploy net4255 via Helm (install or upgrade)"
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade --install {{ helm_release_name }}
+      {{ helm_chart_path }}
+      --namespace {{ k8s_namespace }}
+      --create-namespace
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+      --set image.repository={{ app_image_repository }}
+      --set webdb.tag={{ app_image_tag_webdb }}
+      --set webnodb.tag={{ app_image_tag_webnodb }}
+      --set mongodb.replicas={{ mongodb_replicas }}
+      --set mongodb.storage.storageClassName={{ mongodb_storage_class }}
+      --set mongodb.storage.size={{ mongodb_storage_size }}
+      --set ingress.hosts.webdb={{ ingress_host_webdb }}
+      --set ingress.hosts.webnodb={{ ingress_host_webnodb }}
+      --set prometheus.enabled={{ prometheus_enabled | lower }}
+      {{ '--values ' + helm_values_file if helm_values_file else '' }}
+      --timeout {{ helm_timeout }}
+      {{ '--atomic' if helm_atomic else '' }}
+      {{ '--wait' if helm_wait else '' }}
+  register: helm_result
+
+- name: "Show Helm deploy output"
+  ansible.builtin.debug:
+    msg: "{{ helm_result.stdout_lines }}"
+
+- name: "Verify Helm release status"
+  ansible.builtin.command:
+    cmd: >-
+      helm status {{ helm_release_name }}
+      --namespace {{ k8s_namespace }}
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+  register: helm_status
+  changed_when: false
+
+- name: "Show Helm release status"
+  ansible.builtin.debug:
+    msg: "{{ helm_status.stdout_lines }}"

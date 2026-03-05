@@ -1,0 +1,55 @@
+# Role: verify_rollout — Check that deployments/statefulsets are healthy
+---
+- name: "Verify webdb Deployment rollout"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl rollout status deployment/webdb
+      --namespace {{ k8s_namespace }}
+      {{ '--context ' + k8s_context if k8s_context else '' }}
+      --timeout=120s
+  register: webdb_rollout
+  ignore_errors: true
+
+- name: "Show webdb rollout status"
+  ansible.builtin.debug:
+    msg: "{{ webdb_rollout.stdout | default('No output') }}"
+
+- name: "Verify webnodb Deployment rollout (if replicas > 0)"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl rollout status deployment/webnodb
+      --namespace {{ k8s_namespace }}
+      {{ '--context ' + k8s_context if k8s_context else '' }}
+      --timeout=120s
+  register: webnodb_rollout
+  ignore_errors: true
+  when: webnodb_check | default(true)
+
+- name: "Verify MongoDB StatefulSet rollout"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl rollout status statefulset/{{ helm_release_name }}-mongodb
+      --namespace {{ k8s_namespace }}
+      {{ '--context ' + k8s_context if k8s_context else '' }}
+      --timeout=180s
+  register: mongo_rollout
+  ignore_errors: true
+
+- name: "Show MongoDB rollout status"
+  ansible.builtin.debug:
+    msg: "{{ mongo_rollout.stdout | default('No output') }}"
+
+- name: "Set rollout verification result"
+  ansible.builtin.set_fact:
+    rollout_ok: >-
+      {{ webdb_rollout.rc == 0 and
+         (mongo_rollout.rc == 0) and
+         (webnodb_rollout.rc | default(0) == 0) }}
+
+- name: "Report rollout verification"
+  ansible.builtin.debug:
+    msg: >-
+      Rollout verification: {{ 'PASSED' if rollout_ok else 'FAILED' }}
+      — webdb: {{ 'OK' if webdb_rollout.rc == 0 else 'FAILED' }}
+      — mongodb: {{ 'OK' if mongo_rollout.rc == 0 else 'FAILED' }}
+      {{ '— webnodb: ' + ('OK' if webnodb_rollout.rc | default(1) == 0 else 'FAILED') if webnodb_check | default(true) else '' }}
