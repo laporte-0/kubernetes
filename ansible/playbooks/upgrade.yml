@@ -1,0 +1,50 @@
+# Playbook: upgrade.yml — Image tag upgrade with verification and rollback
+# Usage:
+#   ansible-playbook playbooks/upgrade.yml -e "upgrade_image_tag_webdb=webdb-v8"
+#   ansible-playbook playbooks/upgrade.yml -e "upgrade_image_tag_webdb=webdb-v8 upgrade_image_tag_webnodb=webnodb-v3"
+---
+- name: "NET4255 — Image Upgrade Pipeline"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  pre_tasks:
+    - name: "Validate upgrade tags are provided"
+      ansible.builtin.assert:
+        that:
+          - upgrade_image_tag_webdb is defined and upgrade_image_tag_webdb != ""
+        fail_msg: |
+          You must provide at least upgrade_image_tag_webdb.
+          Example: ansible-playbook playbooks/upgrade.yml -e "upgrade_image_tag_webdb=webdb-v8"
+        success_msg: "Upgrading webdb to {{ upgrade_image_tag_webdb }}"
+
+  tasks:
+    - name: "═══ Phase 1: Image Upgrade ═══"
+      ansible.builtin.include_role:
+        name: helm_upgrade
+
+    - name: "═══ Phase 2: Rollout Verification ═══"
+      ansible.builtin.include_role:
+        name: verify_rollout
+
+    - name: "═══ Phase 3: Health Checks ═══"
+      ansible.builtin.include_role:
+        name: health_check
+
+    - name: "═══ Phase 4: Rollback (if verification failed) ═══"
+      ansible.builtin.include_role:
+        name: helm_rollback
+      vars:
+        rollback_trigger: "{{ not (rollout_ok | default(true)) or not (health_ok | default(true)) }}"
+
+    - name: "Upgrade pipeline complete"
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║       UPGRADE PIPELINE COMPLETE          ║
+          ╠══════════════════════════════════════════╣
+          ║ New webdb tag:   {{ upgrade_image_tag_webdb }}
+          ║ New webnodb tag: {{ upgrade_image_tag_webnodb | default('unchanged') }}
+          ║ Rollout:         {{ 'PASSED' if rollout_ok | default(true) else 'FAILED → ROLLBACK' }}
+          ║ Health:          {{ 'PASSED' if health_ok | default(true) else 'FAILED → ROLLBACK' }}
+          ╚══════════════════════════════════════════╝

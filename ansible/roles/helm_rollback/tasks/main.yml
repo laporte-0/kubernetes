@@ -1,0 +1,44 @@
+# Role: helm_rollback — Rollback Helm release if verification fails
+---
+- name: "Get current Helm revision"
+  ansible.builtin.command:
+    cmd: >-
+      helm history {{ helm_release_name }}
+      --namespace {{ k8s_namespace }}
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+      --max 5
+  register: helm_history
+  changed_when: false
+
+- name: "Show Helm release history"
+  ansible.builtin.debug:
+    msg: "{{ helm_history.stdout_lines }}"
+
+- name: "Rollback to previous revision"
+  ansible.builtin.command:
+    cmd: >-
+      helm rollback {{ helm_release_name }}
+      --namespace {{ k8s_namespace }}
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+      --timeout {{ helm_timeout }}
+      --wait
+  register: rollback_result
+  when: rollback_trigger | default(false)
+
+- name: "Show rollback result"
+  ansible.builtin.debug:
+    msg: "{{ rollback_result.stdout_lines | default(['Rollback not triggered']) }}"
+
+- name: "Verify rollback succeeded"
+  ansible.builtin.command:
+    cmd: >-
+      helm status {{ helm_release_name }}
+      --namespace {{ k8s_namespace }}
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+  register: rollback_status
+  changed_when: false
+  when: rollback_trigger | default(false)
+
+- name: "Show post-rollback status"
+  ansible.builtin.debug:
+    msg: "{{ rollback_status.stdout_lines | default(['No rollback was performed']) }}"

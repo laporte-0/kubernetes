@@ -1,0 +1,29 @@
+# Role: helm_upgrade — Simulate image tag upgrade (obsolescence management)
+---
+- name: "Display current image tags"
+  ansible.builtin.debug:
+    msg: |
+      Current tags:
+        webdb:   {{ app_image_tag_webdb }}
+        webnodb: {{ app_image_tag_webnodb }}
+      Upgrading to:
+        webdb:   {{ upgrade_image_tag_webdb | default(app_image_tag_webdb) }}
+        webnodb: {{ upgrade_image_tag_webnodb | default(app_image_tag_webnodb) }}
+
+- name: "Upgrade image tags via Helm"
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade {{ helm_release_name }}
+      {{ helm_chart_path }}
+      --namespace {{ k8s_namespace }}
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+      --reuse-values
+      --set webdb.tag={{ upgrade_image_tag_webdb | default(app_image_tag_webdb) }}
+      --set webnodb.tag={{ upgrade_image_tag_webnodb | default(app_image_tag_webnodb) }}
+      --timeout {{ helm_timeout }}
+      {{ '--wait' if helm_wait else '' }}
+  register: upgrade_result
+
+- name: "Show upgrade output"
+  ansible.builtin.debug:
+    msg: "{{ upgrade_result.stdout_lines }}"
