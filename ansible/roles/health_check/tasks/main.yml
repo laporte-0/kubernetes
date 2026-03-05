@@ -1,0 +1,79 @@
+# Role: health_check — Post-deployment verification
+---
+# ──────────────────────────────────────────────
+# 1. Web endpoint check
+# ──────────────────────────────────────────────
+- name: "Wait for webdb /health endpoint"
+  ansible.builtin.uri:
+    url: "{{ health_check_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+    timeout: 10
+  register: health_response
+  retries: "{{ health_check_retries }}"
+  delay: "{{ health_check_delay }}"
+  until: health_response.status == 200
+  ignore_errors: true
+
+- name: "Display health check response"
+  ansible.builtin.debug:
+    msg: "{{ health_response.json | default('No response') }}"
+  when: health_response is defined and health_response.json is defined
+
+# ──────────────────────────────────────────────
+# 2. MongoDB replica set check
+# ──────────────────────────────────────────────
+- name: "Check MongoDB replica set status"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl exec {{ helm_release_name }}-mongodb-0
+      --namespace {{ k8s_namespace }}
+      {{ '--context ' + k8s_context if k8s_context else '' }}
+      -- mongosh --quiet --eval "rs.status().members.map(m => m.name + ': ' + m.stateStr)"
+  register: mongo_rs_status
+  ignore_errors: true
+
+- name: "Show MongoDB RS status"
+  ansible.builtin.debug:
+    msg: "{{ mongo_rs_status.stdout_lines | default(['MongoDB check failed']) }}"
+
+# ──────────────────────────────────────────────
+# 3. Redis check
+# ──────────────────────────────────────────────
+- name: "Check Redis connectivity"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl exec deploy/{{ helm_release_name }}-redis
+      --namespace {{ k8s_namespace }}
+      {{ '--context ' + k8s_context if k8s_context else '' }}
+      -- redis-cli ping
+  register: redis_ping
+  ignore_errors: true
+
+- name: "Show Redis status"
+  ansible.builtin.debug:
+    msg: "Redis ping: {{ redis_ping.stdout | default('FAILED') }}"
+
+# ──────────────────────────────────────────────
+# Summary
+# ──────────────────────────────────────────────
+- name: "Set health check results"
+  ansible.builtin.set_fact:
+    health_ok: >-
+      {{ (health_response.status | default(0) == 200) and
+         (mongo_rs_status.rc | default(1) == 0) and
+         (redis_ping.stdout | default('') == 'PONG') }}
+
+- name: "Health check summary"
+  ansible.builtin.debug:
+    msg: |
+      ╔══════════════════════════════════════════╗
+      ║       POST-DEPLOYMENT HEALTH CHECK       ║
+      ╠══════════════════════════════════════════╣
+      ║ Web /health:  {{ 'PASS ✓' if health_response.status | default(0) == 200 else 'FAIL ✗' }}
+      ║ MongoDB RS:   {{ 'PASS ✓' if mongo_rs_status.rc | default(1) == 0 else 'FAIL ✗' }}
+      ║ Redis ping:   {{ 'PASS ✓' if redis_ping.stdout | default('') == 'PONG' else 'FAIL ✗' }}
+      ╠══════════════════════════════════════════╣
+      ║ Overall:      {{ 'ALL PASSED ✓' if health_ok else 'SOME FAILED ✗' }}
+      ╚══════════════════════════════════════════╝
