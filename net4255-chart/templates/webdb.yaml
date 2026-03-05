@@ -59,10 +59,18 @@ spec:
               memory: {{ .Values.resources.limits.memory | quote }}
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 5000
             initialDelaySeconds: 20
             periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
 ---
@@ -73,6 +81,12 @@ metadata:
   labels:
     {{- include "net4255.labels" . | nindent 4 }}
     app: webdb
+  {{- if .Values.prometheus.enabled }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "5000"
+    prometheus.io/path: "/metrics"
+  {{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -80,3 +94,4 @@ spec:
   ports:
     - port: 5000
       targetPort: 5000
+      name: http

@@ -85,3 +85,52 @@ python3 -m flask --app app run --host=0.0.0.0 --port=5001
 curl http://localhost:5001/metrics
 curl http://localhost:5001/health
 ```
+
+---
+
+## Challenge 22 – Helm Chart Prometheus Integration (ServiceMonitor)
+
+**Objective:** Update the Helm chart so Prometheus can auto-discover and scrape the Flask app.
+
+### What was done:
+
+1. **Created `servicemonitor-webdb.yaml` template**
+   - A `ServiceMonitor` (CRD from `monitoring.coreos.com/v1`) that tells Prometheus to scrape the webdb Service
+   - Targets the `http` port on `/metrics` path
+   - Configurable interval (default `15s`) and scrapeTimeout (`10s`)
+   - Conditionally rendered: only when `prometheus.enabled` and `prometheus.serviceMonitor.enabled` are true
+   - Supports optional `additionalLabels` and `namespace` overrides
+
+2. **Updated `webdb.yaml`**
+   - Liveness probe changed from `/` to `/health`
+   - Added readiness probe on `/health`
+   - Added Prometheus annotations on the Service (`prometheus.io/scrape`, `prometheus.io/port`, `prometheus.io/path`)
+   - Named the Service port `http` (required for ServiceMonitor port reference)
+
+3. **Updated `webnodb.yaml`**
+   - Named the Service port `http` for consistency
+
+4. **Updated `values.yaml`**
+   - Added `prometheus` section with `enabled`, `serviceMonitor` sub-config
+
+5. **Bumped Chart version** from `0.1.0` to `0.2.0`, appVersion to `7.0`
+
+### New file:
+- `net4255-chart/templates/servicemonitor-webdb.yaml`
+
+### Modified files:
+- `net4255-chart/templates/webdb.yaml`
+- `net4255-chart/templates/webnodb.yaml`
+- `net4255-chart/values.yaml`
+- `net4255-chart/Chart.yaml`
+
+### How it works:
+```
+Prometheus ──scrapes──> ServiceMonitor ──selects──> webdb Service ──port: http──> /metrics
+```
+
+### Validated:
+```bash
+helm template test-release net4255-chart/
+# Confirmed: ServiceMonitor renders, annotations present, probes use /health
+```

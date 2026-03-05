@@ -61,3 +61,16 @@ ingress:
     # Replace with your own domain: <service>.<namespace>.<cluster-domain>
     webnodb: webnodb.your-namespace.your-cluster.example.com
     webdb: webdb.your-namespace.your-cluster.example.com
+
+# ──────────────────────────────────────────────
+# Prometheus Observability
+# ──────────────────────────────────────────────
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+    # namespace: monitoring  # uncomment if Prometheus is in a different namespace
+    # additionalLabels:     # add labels if your Prometheus uses label selectors
+    #   release: kube-prometheus-stack
