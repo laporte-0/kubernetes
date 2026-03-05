@@ -178,3 +178,163 @@ Created `net4255-chart/templates/prometheusrule.yaml` with 3 alert groups (6 rul
 helm template test-release net4255-chart/
 # Confirmed: All 6 alerts render with correct PromQL and namespace scoping
 ```
+
+---
+
+## Challenge 24 – Ansible Project Structure
+
+**Objective:** Create a clean, production-grade Ansible project structure for Kubernetes lifecycle automation.
+
+### What was done:
+
+Created `ansible/` directory with standard Ansible best practices:
+
+```
+ansible/
+├── ansible.cfg                      # Project-level config (local connection, YAML output)
+├── requirements.yml                 # Galaxy collections: kubernetes.core, community.general
+├── inventories/
+│   ├── dev/                         # Development environment
+│   │   ├── hosts.yml                # localhost with local connection
+│   │   └── group_vars/all.yml       # Dev vars (namespace, images, ingress, prometheus)
+│   └── prod/                        # Production environment
+│       ├── hosts.yml
+│       └── group_vars/all.yml       # Prod vars (larger storage, more retries)
+├── roles/
+│   ├── namespace/                   # Ensure K8s namespace exists
+│   ├── helm_deploy/                 # Helm install/upgrade net4255-chart
+│   ├── helm_upgrade/                # Image tag upgrade (obsolescence management)
+│   ├── verify_rollout/              # kubectl rollout status checks
+│   ├── health_check/                # Web, MongoDB, Redis post-deploy checks
+│   ├── helm_rollback/               # Helm rollback on verification failure
+│   └── prometheus_stack/            # Deploy kube-prometheus-stack
+└── playbooks/
+    ├── deploy.yml                   # Full deployment pipeline
+    ├── upgrade.yml                  # Image upgrade pipeline
+    └── monitoring.yml               # Prometheus stack deployment
+```
+
+### Architecture decisions:
+- **Local connection** — Ansible runs on the same machine as `kubectl`/`helm` (no SSH)
+- **Role-based** — Each concern is a separate, reusable role
+- **Environment separation** — dev/prod inventories with different `group_vars`
+- **Each role has:** `tasks/main.yml`, `defaults/main.yml`, `meta/main.yml`
+
+### Files created: 30 files across ansible/ directory
+
+---
+
+## Challenge 25 – Ansible Helm Deploy Playbook
+
+**Objective:** Automate full platform deployment with Helm via Ansible.
+
+### Playbook: `deploy.yml`
+
+A 5-phase deployment pipeline:
+1. **Namespace Provisioning** — creates K8s namespace if it doesn't exist
+2. **Helm Deploy** — `helm upgrade --install` with all chart values
+3. **Rollout Verification** — `kubectl rollout status` for webdb, webnodb, MongoDB
+4. **Health Checks** — HTTP /health endpoint, MongoDB rs.status, Redis ping
+5. **Auto-Rollback** — triggers `helm rollback` if phases 3 or 4 fail
+
+### Usage:
+```bash
+# Deploy to dev
+cd ansible/
+ansible-playbook playbooks/deploy.yml
+
+# Deploy to prod
+ansible-playbook playbooks/deploy.yml -i inventories/prod/hosts.yml
+```
+
+### Key roles used:
+- `namespace` — uses `kubernetes.core.k8s` to ensure namespace + asserts Active state
+- `helm_deploy` — full `helm upgrade --install` with `--atomic` (auto-rollback on Helm failure)
+- `verify_rollout` — checks all Deployments and StatefulSets, sets `rollout_ok` fact
+- `health_check` — 3-point check (web + MongoDB RS + Redis), sets `health_ok` fact
+- `helm_rollback` — conditionally triggered when `rollout_ok` or `health_ok` is false
+
+---
+
+## Challenge 26 – Ansible Upgrade & Rollback
+
+**Objective:** Automate image tag upgrades with verification and automatic rollback.
+
+### Playbook: `upgrade.yml`
+
+Simulates **obsolescence management** in a telecom context:
+1. Validates that new image tag is provided
+2. Upgrades via `helm upgrade --reuse-values --set webdb.tag=...`
+3. Verifies rollout
+4. Runs health checks
+5. Rolls back if any check fails
+
+### Usage:
+```bash
+# Upgrade webdb to v8
+ansible-playbook playbooks/upgrade.yml -e "upgrade_image_tag_webdb=webdb-v8"
+
+# Upgrade both components
+ansible-playbook playbooks/upgrade.yml \
+  -e "upgrade_image_tag_webdb=webdb-v8" \
+  -e "upgrade_image_tag_webnodb=webnodb-v3"
+```
+
+### Key role: `helm_upgrade`
+- Uses `--reuse-values` to preserve existing configuration
+- Only overrides the image tags being upgraded
+- Clean separation from full deploy
+
+---
+
+## Challenge 27 – Ansible Health Checks
+
+**Objective:** Post-deployment verification of all platform components.
+
+### Role: `health_check`
+
+Three verification points:
+| Check | Method | Success Criteria |
+|-------|--------|------------------|
+| **Web** | HTTP GET `/health` | HTTP 200 + JSON response |
+| **MongoDB** | `kubectl exec` → `mongosh rs.status()` | All members reporting state |
+| **Redis** | `kubectl exec` → `redis-cli ping` | Response is `PONG` |
+
+Features:
+- Configurable retries and delay for web endpoint checks
+- Sets `health_ok` fact used by rollback role
+- Pretty-printed summary table in console output
+
+### Role: `helm_rollback`
+- Shows `helm history` before rollback
+- Conditional execution based on `rollback_trigger` variable
+- Runs `helm rollback` + `helm status` to confirm
+
+---
+
+## Challenge 28 – Prometheus Stack Deployment Playbook
+
+**Objective:** Automate deployment of the `kube-prometheus-stack` monitoring platform.
+
+### Playbook: `monitoring.yml`
+
+1. Deploys `kube-prometheus-stack` via Helm (Prometheus + Grafana + Alertmanager)
+2. Verifies ServiceMonitor discovery in the app namespace
+3. Verifies PrometheusRule discovery
+4. Reports summary
+
+### Key configuration:
+```yaml
+# Critical Helm values for cross-namespace monitoring:
+--set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+--set prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues=false
+```
+This ensures Prometheus discovers ServiceMonitors and PrometheusRules in **all namespaces**, not just the monitoring namespace.
+
+### Usage:
+```bash
+ansible-playbook playbooks/monitoring.yml
+```
+
+### Note:
+All Ansible playbooks will be tested when cluster access is available. The syntax and structure follow Ansible best practices and are ready for execution.
