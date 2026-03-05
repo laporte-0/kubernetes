@@ -134,3 +134,47 @@ Prometheus ──scrapes──> ServiceMonitor ──selects──> webdb Servic
 helm template test-release net4255-chart/
 # Confirmed: ServiceMonitor renders, annotations present, probes use /health
 ```
+
+---
+
+## Challenge 23 – Prometheus Alert Rules (PrometheusRule)
+
+**Objective:** Define production-relevant alert rules that Prometheus will evaluate automatically.
+
+### What was done:
+
+Created `net4255-chart/templates/prometheusrule.yaml` with 3 alert groups (6 rules total):
+
+#### Group 1: Pod Health
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `PodRestarting` | >3 restarts in 15 minutes | warning |
+| `PodCrashLooping` | CrashLoopBackOff state for 5 min | critical |
+
+#### Group 2: Resource Usage
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `HighCPUUsage` | CPU >85% of limit for 10 min | warning |
+| `HighMemoryUsage` | Memory >90% of limit for 10 min | warning |
+
+#### Group 3: Deployment Health
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `ReplicaMismatch` | Desired != Available replicas for 10 min | critical |
+| `WebdbEndpointDown` | Prometheus cannot scrape webdb for 3 min | critical |
+
+### How it works:
+- Uses the `monitoring.coreos.com/v1` `PrometheusRule` CRD
+- All PromQL expressions are namespace-scoped using `{{ .Release.Namespace }}`
+- Conditionally rendered: `prometheus.enabled` and `prometheus.alertRules.enabled`
+- Supports `additionalLabels` for Prometheus rule selectors
+
+### Files:
+- **New:** `net4255-chart/templates/prometheusrule.yaml`
+- **Modified:** `net4255-chart/values.yaml` (added `alertRules` section)
+
+### Validated:
+```bash
+helm template test-release net4255-chart/
+# Confirmed: All 6 alerts render with correct PromQL and namespace scoping
+```

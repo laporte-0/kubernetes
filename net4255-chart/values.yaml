@@ -74,3 +74,7 @@ prometheus:
     # namespace: monitoring  # uncomment if Prometheus is in a different namespace
     # additionalLabels:     # add labels if your Prometheus uses label selectors
     #   release: kube-prometheus-stack
+  alertRules:
+    enabled: true
+    # additionalLabels:     # add labels to match your Prometheus ruleSelector
+    #   release: kube-prometheus-stack
