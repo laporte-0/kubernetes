@@ -1,0 +1,29 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  terraform.tfvars.example — Copy to terraform.tfvars       ║
+# ║                                                            ║
+# ║  cp terraform.tfvars.example terraform.tfvars              ║
+# ║  Then edit with your values.                               ║
+# ║  terraform.tfvars is gitignored (may contain secrets).     ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+project_name = "net4255"
+aws_region   = "us-east-1"
+environment  = "dev"
+
+# VPC
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b"]
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# EKS
+eks_cluster_version     = "1.29"
+eks_node_instance_types = ["t3.medium"]
+eks_node_desired        = 2
+eks_node_min            = 1
+eks_node_max            = 4
+eks_node_disk_size      = 20
+
+# ECR
+ecr_image_tag_mutability = "MUTABLE"
+ecr_scan_on_push         = true

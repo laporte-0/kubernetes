@@ -338,3 +338,41 @@ ansible-playbook playbooks/monitoring.yml
 
 ### Note:
 All Ansible playbooks will be tested when cluster access is available. The syntax and structure follow Ansible best practices and are ready for execution.
+
+---
+
+## Phase 7 — AWS EKS Cloud Deployment
+
+### Challenge 29 — Terraform: AWS Infrastructure (VPC + EKS + ECR)
+
+Created a complete Infrastructure-as-Code setup using Terraform to provision the AWS foundation for the platform.
+
+### What was created:
+
+| File | Purpose |
+|------|---------|
+| `terraform/main.tf` | Provider config (AWS + TLS), local backend, data sources |
+| `terraform/variables.tf` | All configurable inputs (region, instance types, CIDR blocks) |
+| `terraform/vpc.tf` | VPC, 2 public + 2 private subnets, IGW, NAT GW, route tables |
+| `terraform/eks.tf` | EKS cluster, managed node group, add-ons (CoreDNS, kube-proxy, VPC CNI, EBS CSI) |
+| `terraform/ecr.tf` | ECR repository with lifecycle policy and vulnerability scanning |
+| `terraform/iam.tf` | 4 IAM roles: EKS cluster, node group, LB controller (IRSA), EBS CSI (IRSA) |
+| `terraform/outputs.tf` | Cluster endpoint, ECR URL, kubectl/docker login commands |
+| `terraform/policies/` | Official AWS LB Controller IAM policy JSON |
+
+### Architecture:
+- **VPC**: `10.0.0.0/16` with 2 AZs (`us-east-1a`, `us-east-1b`)
+- **Public subnets**: ALB + NAT Gateway (internet-facing)
+- **Private subnets**: EKS worker nodes (no public IP, outbound via NAT)
+- **EKS**: Managed control plane v1.29 + managed node group (t3.medium)
+- **ECR**: Private Docker registry with auto-cleanup of old images
+- **IRSA**: Fine-grained IAM for LB controller and EBS CSI driver
+
+### Usage:
+```bash
+cd terraform/
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan
+terraform apply   # ~15 minutes
+```
