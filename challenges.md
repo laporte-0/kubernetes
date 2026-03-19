@@ -503,3 +503,32 @@ Verified rendered manifests include:
 - `kind: ServiceAccount` with `name: net4255-app`
 - `eks.amazonaws.com/role-arn` annotation
 - `serviceAccountName: net4255-app` in both app deployments
+
+## Challenge 34 — Prometheus on EKS (ServiceMonitor + Alert Rules)
+
+**Objective:** Ensure monitoring resources are discoverable by `kube-prometheus-stack` after moving deployment to EKS.
+
+### What was implemented:
+
+| File | Change |
+|------|--------|
+| `net4255-chart/values-aws.yaml` | Added Prometheus discovery labels for ServiceMonitor/PrometheusRule |
+
+### EKS monitoring settings:
+
+- `prometheus.serviceMonitor.additionalLabels.release: kube-prometheus-stack`
+- `prometheus.alertRules.additionalLabels.release: kube-prometheus-stack`
+- `interval: 15s`, `scrapeTimeout: 10s`
+
+These labels align monitoring CRs with common kube-prometheus-stack selector conventions in EKS environments.
+
+### Validation:
+
+```bash
+helm template test-release net4255-chart -f net4255-chart/values-aws.yaml
+```
+
+Verified rendered output contains:
+- `kind: ServiceMonitor` with `release: kube-prometheus-stack`
+- `kind: PrometheusRule` with `release: kube-prometheus-stack`
+- Endpoint scrape path `/metrics`
