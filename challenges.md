@@ -376,3 +376,44 @@ terraform init
 terraform plan
 terraform apply   # ~15 minutes
 ```
+
+## Challenge 30 — AWS ECR Workflow (Build → Push)
+
+**Objective:** Standardize Docker image publication to Amazon ECR for both app variants (`webdb` and `webnodb`).
+
+### What was implemented:
+
+| File | Purpose |
+|------|---------|
+| `scripts/aws/ecr_login.sh` | Authenticates Docker to ECR using AWS CLI |
+| `scripts/aws/build_and_push.sh` | Builds image, ensures repository exists, and pushes image to ECR |
+| `scripts/aws/configure_kubeconfig.sh` | Updates local kubeconfig to point to EKS cluster |
+
+### Script details:
+
+- **Safe shell mode**: all scripts use `set -euo pipefail`
+- **Dependency checks**: validates `aws` and `docker` availability
+- **Region defaults**: defaults to `us-east-1`, overridable via `AWS_REGION`
+- **Account-aware registry**: dynamically resolves AWS account ID for ECR URI
+- **Repository bootstrap**: creates ECR repository automatically if missing
+
+### Usage:
+
+```bash
+# 1) Authenticate Docker to ECR
+./scripts/aws/ecr_login.sh us-east-1
+
+# 2) Build and push webdb image
+./scripts/aws/build_and_push.sh webdb webdb-v7 us-east-1
+
+# 3) Build and push webnodb image
+./scripts/aws/build_and_push.sh webnodb webnodb-v2 us-east-1
+
+# 4) Point kubectl to EKS cluster
+./scripts/aws/configure_kubeconfig.sh net4255-cluster us-east-1
+```
+
+### Validation:
+
+- Shell syntax validation passed for all scripts (`bash -n`)
+- Scripts were marked executable (`chmod +x scripts/aws/*.sh`)
