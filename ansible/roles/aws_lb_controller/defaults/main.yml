@@ -1,0 +1,6 @@
+---
+aws_lb_controller_namespace: kube-system
+aws_lb_controller_service_account_name: aws-load-balancer-controller
+aws_lb_controller_chart_repo: https://aws.github.io/eks-charts
+aws_lb_controller_chart_name: eks/aws-load-balancer-controller
+aws_lb_controller_chart_version: "1.8.1"

@@ -1,0 +1,45 @@
+---
+# AWS inventory variables for EKS deployment pipeline
+
+# AWS
+aws_region: us-east-1
+aws_account_id: ""
+aws_profile: ""
+
+# EKS
+eks_cluster_name: net4255-cluster
+k8s_context: ""
+k8s_namespace: azaabar-prod
+
+# ECR
+aws_ecr_repository: net4255
+app_image_tag_webdb: webdb-v7
+app_image_tag_webnodb: webnodb-v2
+app_image_repository: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/{{ aws_ecr_repository }}"
+
+# Helm deployment
+helm_release_name: net4255
+helm_chart_path: "{{ playbook_dir }}/../../net4255-chart"
+helm_values_file: "{{ playbook_dir }}/../../net4255-chart/values-aws.yaml"
+helm_timeout: 600s
+helm_atomic: true
+helm_wait: true
+
+# MongoDB storage
+mongodb_replicas: 3
+mongodb_storage_class: gp3-net4255
+mongodb_storage_size: 5Gi
+
+# Ingress hosts (replace before production)
+ingress_host_webdb: webdb.net4255.example.com
+ingress_host_webnodb: webnodb.net4255.example.com
+
+# Prometheus
+prometheus_enabled: true
+
+# AWS Load Balancer Controller / IRSA
+aws_lb_controller_cluster_name: "{{ eks_cluster_name }}"
+aws_lb_controller_role_arn: "arn:aws:iam::<AWS_ACCOUNT_ID>:role/net4255-lb-controller-role"
+aws_lb_controller_chart_version: "1.8.1"
+aws_lb_controller_namespace: kube-system
+aws_lb_controller_service_account_name: aws-load-balancer-controller

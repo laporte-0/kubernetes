@@ -532,3 +532,42 @@ Verified rendered output contains:
 - `kind: ServiceMonitor` with `release: kube-prometheus-stack`
 - `kind: PrometheusRule` with `release: kube-prometheus-stack`
 - Endpoint scrape path `/metrics`
+
+## Challenge 35 — Ansible AWS Deployment Pipeline (EKS + ECR + Helm)
+
+**Objective:** Automate cloud deployment flow end-to-end for AWS: authenticate to EKS, build/push images to ECR, install ALB controller, and deploy Helm release.
+
+### What was implemented:
+
+| File | Purpose |
+|------|---------|
+| `ansible/inventories/aws/hosts.yml` | Localhost inventory for AWS deployment runs |
+| `ansible/inventories/aws/group_vars/all.yml` | AWS/EKS/ECR/Helm variables and defaults |
+| `ansible/roles/eks_auth/tasks/main.yml` | Configures kubeconfig and verifies cluster connectivity |
+| `ansible/roles/ecr_push/tasks/main.yml` | Resolves account ID, builds/pushes both images to ECR |
+| `ansible/roles/aws_lb_controller/defaults/main.yml` | Defaults for ALB controller chart install |
+| `ansible/roles/aws_lb_controller/tasks/main.yml` | Installs AWS Load Balancer Controller via Helm with IRSA annotation |
+| `ansible/playbooks/aws-deploy.yml` | Orchestrates full AWS pipeline phases 1–7 |
+| `ansible/requirements.yml` | Added `amazon.aws` collection |
+
+### Pipeline order (`aws-deploy.yml`):
+
+1. `eks_auth`
+2. `ecr_push`
+3. `namespace`
+4. `aws_lb_controller`
+5. `helm_deploy`
+6. `verify_rollout`
+7. `health_check`
+
+### Usage:
+
+```bash
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook -i inventories/aws/hosts.yml playbooks/aws-deploy.yml
+```
+
+### Validation note:
+
+- `ansible-playbook --syntax-check` could not be executed locally because Ansible CLI is not installed in this environment.

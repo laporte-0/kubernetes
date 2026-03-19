@@ -1,0 +1,70 @@
+---
+- name: Resolve AWS account ID
+  ansible.builtin.command:
+    cmd: aws sts get-caller-identity --query Account --output text
+  register: aws_account_id_cmd
+  changed_when: false
+  environment:
+    AWS_PROFILE: "{{ aws_profile }}"
+  when: aws_profile | length > 0
+
+- name: Resolve AWS account ID (default profile)
+  ansible.builtin.command:
+    cmd: aws sts get-caller-identity --query Account --output text
+  register: aws_account_id_cmd
+  changed_when: false
+  when: aws_profile | length == 0
+
+- name: Set runtime AWS account ID fact
+  ansible.builtin.set_fact:
+    aws_account_id: "{{ aws_account_id_cmd.stdout | trim }}"
+
+- name: Build and push webdb image to ECR
+  ansible.builtin.command:
+    cmd: >-
+      {{ playbook_dir }}/../../scripts/aws/build_and_push.sh
+      webdb
+      {{ app_image_tag_webdb }}
+      {{ aws_region }}
+  environment:
+    AWS_PROFILE: "{{ aws_profile }}"
+    ECR_REPOSITORY: "{{ aws_ecr_repository }}"
+  when: aws_profile | length > 0
+
+- name: Build and push webdb image to ECR (default AWS profile)
+  ansible.builtin.command:
+    cmd: >-
+      {{ playbook_dir }}/../../scripts/aws/build_and_push.sh
+      webdb
+      {{ app_image_tag_webdb }}
+      {{ aws_region }}
+  environment:
+    ECR_REPOSITORY: "{{ aws_ecr_repository }}"
+  when: aws_profile | length == 0
+
+- name: Build and push webnodb image to ECR
+  ansible.builtin.command:
+    cmd: >-
+      {{ playbook_dir }}/../../scripts/aws/build_and_push.sh
+      webnodb
+      {{ app_image_tag_webnodb }}
+      {{ aws_region }}
+  environment:
+    AWS_PROFILE: "{{ aws_profile }}"
+    ECR_REPOSITORY: "{{ aws_ecr_repository }}"
+  when: aws_profile | length > 0
+
+- name: Build and push webnodb image to ECR (default AWS profile)
+  ansible.builtin.command:
+    cmd: >-
+      {{ playbook_dir }}/../../scripts/aws/build_and_push.sh
+      webnodb
+      {{ app_image_tag_webnodb }}
+      {{ aws_region }}
+  environment:
+    ECR_REPOSITORY: "{{ aws_ecr_repository }}"
+  when: aws_profile | length == 0
+
+- name: Build ECR image repository URI for Helm deploy
+  ansible.builtin.set_fact:
+    app_image_repository: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/{{ aws_ecr_repository }}"

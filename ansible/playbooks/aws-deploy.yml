@@ -1,0 +1,46 @@
+---
+- name: NET4255 — AWS EKS Full Deployment Pipeline
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Phase 1 — EKS kubeconfig authentication
+      ansible.builtin.include_role:
+        name: eks_auth
+
+    - name: Phase 2 — Build and push images to ECR
+      ansible.builtin.include_role:
+        name: ecr_push
+
+    - name: Phase 3 — Namespace provisioning
+      ansible.builtin.include_role:
+        name: namespace
+
+    - name: Phase 4 — Install AWS Load Balancer Controller
+      ansible.builtin.include_role:
+        name: aws_lb_controller
+
+    - name: Phase 5 — Deploy net4255 chart on EKS
+      ansible.builtin.include_role:
+        name: helm_deploy
+
+    - name: Phase 6 — Verify rollout
+      ansible.builtin.include_role:
+        name: verify_rollout
+
+    - name: Phase 7 — Health checks
+      ansible.builtin.include_role:
+        name: health_check
+
+    - name: AWS deployment complete
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║      AWS DEPLOYMENT PIPELINE COMPLETE    ║
+          ╠══════════════════════════════════════════╣
+          ║ Cluster:     {{ eks_cluster_name }}
+          ║ Namespace:   {{ k8s_namespace }}
+          ║ Release:     {{ helm_release_name }}
+          ║ Ingress:     ALB (aws-load-balancer-controller)
+          ╚══════════════════════════════════════════╝

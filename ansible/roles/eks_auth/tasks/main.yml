@@ -1,0 +1,28 @@
+---
+- name: Configure kubeconfig for EKS cluster
+  ansible.builtin.command:
+    cmd: >-
+      {{ playbook_dir }}/../../scripts/aws/configure_kubeconfig.sh
+      {{ eks_cluster_name }}
+      {{ aws_region }}
+  environment:
+    AWS_PROFILE: "{{ aws_profile }}"
+  when: aws_profile | length > 0
+
+- name: Configure kubeconfig for EKS cluster (default AWS profile)
+  ansible.builtin.command:
+    cmd: >-
+      {{ playbook_dir }}/../../scripts/aws/configure_kubeconfig.sh
+      {{ eks_cluster_name }}
+      {{ aws_region }}
+  when: aws_profile | length == 0
+
+- name: Verify cluster connectivity
+  ansible.builtin.command:
+    cmd: kubectl cluster-info
+  register: cluster_info
+  changed_when: false
+
+- name: Show cluster connectivity
+  ansible.builtin.debug:
+    msg: "{{ cluster_info.stdout_lines }}"

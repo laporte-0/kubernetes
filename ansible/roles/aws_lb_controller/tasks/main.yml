@@ -1,0 +1,33 @@
+---
+- name: Add AWS EKS Helm repo
+  ansible.builtin.command:
+    cmd: helm repo add eks {{ aws_lb_controller_chart_repo }}
+  changed_when: false
+  failed_when: false
+
+- name: Update Helm repos
+  ansible.builtin.command:
+    cmd: helm repo update
+  changed_when: false
+
+- name: Install/upgrade AWS Load Balancer Controller
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade --install aws-load-balancer-controller
+      {{ aws_lb_controller_chart_name }}
+      --namespace {{ aws_lb_controller_namespace }}
+      --create-namespace
+      {{ '--kube-context ' + k8s_context if k8s_context else '' }}
+      --set clusterName={{ aws_lb_controller_cluster_name }}
+      --set serviceAccount.create=true
+      --set serviceAccount.name={{ aws_lb_controller_service_account_name }}
+      --set serviceAccount.annotations.eks\.amazonaws\.com/role-arn={{ aws_lb_controller_role_arn }}
+      --set region={{ aws_region }}
+      --version {{ aws_lb_controller_chart_version }}
+      --wait
+      --timeout 600s
+  register: aws_lb_controller_install
+
+- name: Show AWS Load Balancer Controller deploy output
+  ansible.builtin.debug:
+    msg: "{{ aws_lb_controller_install.stdout_lines }}"
