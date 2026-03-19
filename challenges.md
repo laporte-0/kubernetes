@@ -477,3 +477,29 @@ Verified rendered ingress contains:
 - `kind: Ingress`
 - `ingressClassName: alb`
 - ALB annotations under metadata
+
+## Challenge 33 — IRSA Integration (IAM Roles for Service Accounts)
+
+**Objective:** Add secure pod-level AWS permissions via IRSA instead of relying on broad node IAM permissions.
+
+### What was implemented:
+
+| File | Change |
+|------|--------|
+| `net4255-chart/templates/serviceaccount.yaml` | Added managed ServiceAccount template with optional annotations |
+| `net4255-chart/templates/_helpers.tpl` | Added `net4255.serviceAccountName` helper |
+| `net4255-chart/templates/webdb.yaml` | Added `serviceAccountName` to deployment pod spec |
+| `net4255-chart/templates/webnodb.yaml` | Added `serviceAccountName` to deployment pod spec |
+| `net4255-chart/values.yaml` | Added configurable `serviceAccount` block |
+| `net4255-chart/values-aws.yaml` | Added IRSA role annotation placeholder (`eks.amazonaws.com/role-arn`) |
+
+### Validation:
+
+```bash
+helm template test-release net4255-chart -f net4255-chart/values-aws.yaml
+```
+
+Verified rendered manifests include:
+- `kind: ServiceAccount` with `name: net4255-app`
+- `eks.amazonaws.com/role-arn` annotation
+- `serviceAccountName: net4255-app` in both app deployments

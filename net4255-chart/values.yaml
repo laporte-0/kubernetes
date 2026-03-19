@@ -4,6 +4,11 @@ image:
   repository: azerzaa/flask-net4255
   pullPolicy: IfNotPresent
 
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
 webnodb:
   replicas: 0
   tag: webnodb-v2

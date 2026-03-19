@@ -23,6 +23,7 @@ spec:
         app: webdb
         {{- include "net4255.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "net4255.serviceAccountName" . }}
       containers:
         - name: webdb
           image: {{ printf "%s:%s" .Values.image.repository .Values.webdb.tag | quote }}
