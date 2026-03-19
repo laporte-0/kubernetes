@@ -18,6 +18,7 @@ This project showcases the complete journey of building, containerizing, and dep
 - 📈 Prometheus metrics, ServiceMonitor, and alert rules
 - 🤖 Ansible automation for deployment, upgrades, and rollback
 - 🩺 Health check endpoints and post-deployment verification
+- ☁️ AWS extension with Terraform-provisioned EKS, ECR, EBS, ALB, and IRSA
 
 ## 🛠️ Technology Stack
 
@@ -56,14 +57,14 @@ This project showcases the complete journey of building, containerizing, and dep
 
 ## 🏗️ Architecture
 
-### Final Architecture (Challenge 28)
+### Final Architecture (Challenge 35)
 
 ```
                                     Internet
-                                       |
-                                   [Ingress]
-                                    (NGINX)
-                                       |
+                                      |
+                                   [AWS ALB Ingress]
+                             (aws-load-balancer-controller)
+                                      |
                     +------------------+------------------+
                     |                                     |
               [webdb Service]                    [webnodb Service]
@@ -83,15 +84,22 @@ This project showcases the complete journey of building, containerizing, and dep
    (3 members: PRIMARY      (Visit Counter)
     + 2 SECONDARY)
         |
-   [PersistentVolume]              [Prometheus + Grafana]
-    (Longhorn Storage)              (kube-prometheus-stack)
+  [PersistentVolume]              [Prometheus + Grafana]
+   (AWS EBS via CSI)               (kube-prometheus-stack)
                                     - ServiceMonitor → /metrics
                                     - PrometheusRule (6 alerts)
 
     [Ansible Automation]
     ├── deploy.yml      → Namespace + Helm install + verify + health check
     ├── upgrade.yml     → Image tag upgrade + rollback on failure
-    └── monitoring.yml  → kube-prometheus-stack deployment
+   ├── monitoring.yml  → kube-prometheus-stack deployment
+   └── aws-deploy.yml  → EKS auth + ECR push + ALB controller + Helm deploy
+
+   [Terraform AWS Infrastructure]
+   ├── VPC + Public/Private Subnets + NAT Gateway
+   ├── EKS Cluster + Node Group + EBS CSI add-on
+   ├── ECR Repository
+   └── IAM + OIDC + IRSA roles
 ```
 
 ### Component Breakdown
@@ -179,6 +187,30 @@ This project showcases the complete journey of building, containerizing, and dep
    ```bash
    kubectl exec -n <your-namespace> net4255-mongodb-0 -- \
      mongosh --eval "rs.status()"
+
+  ### AWS EKS Deployment (Challenge 29-35)
+
+  1. **Provision AWS infrastructure (Terraform):**
+    ```bash
+    cd terraform/
+    cp terraform.tfvars.example terraform.tfvars
+    terraform init
+    terraform apply
+    ```
+
+  2. **Build and push images to ECR:**
+    ```bash
+    ./scripts/aws/ecr_login.sh us-east-1
+    ./scripts/aws/build_and_push.sh webdb webdb-v7 us-east-1
+    ./scripts/aws/build_and_push.sh webnodb webnodb-v2 us-east-1
+    ```
+
+  3. **Deploy full AWS pipeline with Ansible:**
+    ```bash
+    cd ansible/
+    ansible-galaxy collection install -r requirements.yml
+    ansible-playbook -i inventories/aws/hosts.yml playbooks/aws-deploy.yml
+    ```
    ```
 
 ### Access the Application
@@ -203,10 +235,12 @@ This project showcases the complete journey of building, containerizing, and dep
 ├── net4255-chart/                  # Helm Chart for Kubernetes (v0.2.0)
 │   ├── Chart.yaml
 │   ├── values.yaml                 # Configuration values (app, mongodb, prometheus)
+│   ├── values-aws.yaml             # AWS EKS overrides (ECR, ALB, EBS, IRSA)
 │   └── templates/
 │       ├── webdb.yaml              # Deployment + Service (with /health probes)
 │       ├── webnodb.yaml            # Deployment + Service
 │       ├── mongodb-statefulset.yaml
+│       ├── storageclass.yaml       # Optional AWS EBS StorageClass (gp3)
 │       ├── mongodb-headless-service.yaml
 │       ├── redis-deployment.yaml
 │       ├── redis-service.yaml
@@ -217,6 +251,7 @@ This project showcases the complete journey of building, containerizing, and dep
 │       ├── networkpolicy-mongodb.yaml
 │       ├── servicemonitor-webdb.yaml   # Prometheus ServiceMonitor
 │       ├── prometheusrule.yaml         # Prometheus alert rules (6 alerts)
+│       ├── serviceaccount.yaml         # IRSA-ready ServiceAccount
 │       ├── _helpers.tpl
 │       └── NOTES.txt
 │
@@ -227,13 +262,17 @@ This project showcases the complete journey of building, containerizing, and dep
 │   │   ├── dev/                    # Development environment
 │   │   │   ├── hosts.yml
 │   │   │   └── group_vars/all.yml
-│   │   └── prod/                   # Production environment
+│   │   ├── prod/                   # Production environment
+│   │       ├── hosts.yml
+│   │       └── group_vars/all.yml
+│   │   └── aws/                    # AWS EKS environment
 │   │       ├── hosts.yml
 │   │       └── group_vars/all.yml
 │   ├── playbooks/
 │   │   ├── deploy.yml              # Full deployment pipeline
 │   │   ├── upgrade.yml             # Image tag upgrade + rollback
-│   │   └── monitoring.yml          # kube-prometheus-stack deployment
+│   │   ├── monitoring.yml          # kube-prometheus-stack deployment
+│   │   └── aws-deploy.yml          # AWS pipeline (EKS + ECR + ALB + Helm)
 │   └── roles/
 │       ├── namespace/              # K8s namespace provisioning
 │       ├── helm_deploy/            # Helm install/upgrade
@@ -241,12 +280,30 @@ This project showcases the complete journey of building, containerizing, and dep
 │       ├── verify_rollout/         # kubectl rollout status
 │       ├── health_check/           # Web + MongoDB + Redis checks
 │       ├── helm_rollback/          # Rollback on failure
-│       └── prometheus_stack/       # kube-prometheus-stack deploy
+│       ├── prometheus_stack/       # kube-prometheus-stack deploy
+│       ├── eks_auth/               # Configure kubeconfig for EKS
+│       ├── ecr_push/               # Build/push images to ECR
+│       └── aws_lb_controller/      # Install ALB controller (IRSA)
+│
+├── scripts/aws/                    # AWS helper scripts
+│   ├── ecr_login.sh
+│   ├── build_and_push.sh
+│   └── configure_kubeconfig.sh
+│
+├── terraform/                      # Terraform IaC for AWS infrastructure
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── vpc.tf
+│   ├── eks.tf
+│   ├── ecr.tf
+│   ├── iam.tf
+│   ├── outputs.tf
+│   └── policies/
 │
 ├── challenge16/                    # Pure kubectl YAML files (Ch16)
 ├── nginx/                          # NGINX load balancer config
 ├── docs/schemas/                   # Architecture diagrams
-├── challenges.md                   # Detailed log of all challenges (5-28)
+├── challenges.md                   # Detailed log of all challenges (5-35)
 ├── README_COURSE.md                # Original course instructions (Télécom SudParis)
 └── README.md                       # This file
 ```
@@ -295,6 +352,15 @@ Each challenge represents a learning milestone in building production-ready clou
 - ✅ **Ch27**: Post-deployment health checks (web, MongoDB, Redis)
 - ✅ **Ch28**: kube-prometheus-stack deployment playbook
 
+### Phase 7: AWS EKS Cloud Extension (Challenges 29-35)
+- ✅ **Ch29**: Terraform AWS foundation (VPC + EKS + ECR + IAM/IRSA)
+- ✅ **Ch30**: ECR workflow scripts (login, build/push, kubeconfig)
+- ✅ **Ch31**: MongoDB persistent storage on EKS (AWS EBS via CSI)
+- ✅ **Ch32**: AWS ALB ingress configuration (Load Balancer Controller)
+- ✅ **Ch33**: IRSA-ready ServiceAccount integration in Helm
+- ✅ **Ch34**: EKS Prometheus discovery labels and monitoring overrides
+- ✅ **Ch35**: Ansible AWS deployment pipeline (EKS + ECR + ALB + Helm)
+
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -327,8 +393,13 @@ webdb:
 mongodb:
   enabled: true
   replicas: 3
-  storage: 0.1Gi
-  storageClassName: longhorn-static
+  storage:
+    size: 1Gi
+    storageClassName: ""
+    createStorageClass: false
+    ebs:
+      type: gp3
+      fsType: ext4
 
 prometheus:
   enabled: true
@@ -573,8 +644,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-This project was developed as part of the NET4255 course at Télécom SudParis (Challenges 1-20), and extended with personal work on Prometheus observability and Ansible automation (Challenges 21-28). See [`README_COURSE.md`](README_COURSE.md) for the original course instructions and [`challenges.md`](challenges.md) for detailed logs of each challenge.
+This project was developed as part of the NET4255 course at Télécom SudParis (Challenges 1-20), then extended with personal work across observability, automation, and AWS cloud deployment (Challenges 21-35). See [`README_COURSE.md`](README_COURSE.md) for original course instructions and [`challenges.md`](challenges.md) for the complete challenge-by-challenge implementation log.
 
 ---
 
-**Built with ❤️ using Flask, Docker, Kubernetes, Prometheus, and Ansible**
+**Built with ❤️ using Flask, Docker, Kubernetes, Helm, Terraform, Prometheus, Ansible, and AWS EKS**
