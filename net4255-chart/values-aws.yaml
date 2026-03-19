@@ -26,6 +26,15 @@ mongodb:
 ingress:
   enabled: true
   className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/success-codes: 200-399
+  hosts:
+    webdb: webdb.net4255.example.com
+    webnodb: webnodb.net4255.example.com
 
 prometheus:
   enabled: true

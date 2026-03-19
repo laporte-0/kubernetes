@@ -446,3 +446,34 @@ Verified in rendered manifests:
 - `kind: StorageClass` exists with name `gp3-net4255`
 - MongoDB pod mounts PVC at `/data/db`
 - No `emptyDir` for MongoDB data path
+
+## Challenge 32 — AWS ALB Ingress (Load Balancer Controller)
+
+**Objective:** Adapt Helm ingress resources for EKS so traffic is exposed through AWS Load Balancer Controller (ALB) instead of local ingress assumptions.
+
+### What was implemented:
+
+| File | Change |
+|------|--------|
+| `net4255-chart/templates/ingress.yaml` | Added support for configurable `ingress.annotations` |
+| `net4255-chart/values.yaml` | Added `ingress.annotations` map for generic annotation injection |
+| `net4255-chart/values-aws.yaml` | Added ALB-specific annotations and AWS host placeholders |
+
+### AWS ALB settings used:
+
+- `ingressClassName: alb`
+- `alb.ingress.kubernetes.io/scheme: internet-facing`
+- `alb.ingress.kubernetes.io/target-type: ip`
+- `alb.ingress.kubernetes.io/listen-ports: [{"HTTP":80}]`
+- `alb.ingress.kubernetes.io/healthcheck-path: /health`
+
+### Validation:
+
+```bash
+helm template test-release net4255-chart -f net4255-chart/values-aws.yaml
+```
+
+Verified rendered ingress contains:
+- `kind: Ingress`
+- `ingressClassName: alb`
+- ALB annotations under metadata

@@ -5,6 +5,10 @@ metadata:
   name: {{ include "net4255.fullname" . }}
   labels:
     {{- include "net4255.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:

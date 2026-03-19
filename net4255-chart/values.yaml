@@ -63,6 +63,7 @@ resources:
 ingress:
   enabled: true
   className: nginx
+  annotations: {}
   hosts:
     # Replace with your own domain: <service>.<namespace>.<cluster-domain>
     webnodb: webnodb.your-namespace.your-cluster.example.com
