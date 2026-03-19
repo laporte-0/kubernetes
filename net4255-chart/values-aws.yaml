@@ -1,0 +1,35 @@
+# AWS EKS overrides for net4255-chart
+
+image:
+  repository: "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/net4255"
+  pullPolicy: IfNotPresent
+
+webdb:
+  tag: webdb-v7
+
+webnodb:
+  tag: webnodb-v2
+
+mongodb:
+  enabled: true
+  replicas: 3
+  storage:
+    size: 5Gi
+    storageClassName: gp3-net4255
+    createStorageClass: true
+    ebs:
+      type: gp3
+      fsType: ext4
+      iops: "3000"
+      throughput: "125"
+
+ingress:
+  enabled: true
+  className: alb
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+  alertRules:
+    enabled: true

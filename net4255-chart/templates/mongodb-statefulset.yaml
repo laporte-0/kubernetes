@@ -14,9 +14,6 @@ spec:
       labels:
         app: {{ include "net4255.fullname" . }}-mongodb
     spec:
-      volumes:
-      - name: mongo-db
-        emptyDir: {}
       containers:
         - name: mongodb
           image: {{ .Values.mongodb.image }}
@@ -43,10 +40,8 @@ spec:
               cpu: {{ .Values.mongodb.resources.limits.cpu }}
               memory: {{ .Values.mongodb.resources.limits.memory }}
           volumeMounts:
-            - name: mongo-db
-              mountPath: /data/db
             - name: mongo-data
-              mountPath: /data/pvc
+              mountPath: /data/db
   volumeClaimTemplates:
     - metadata:
         name: mongo-data

@@ -33,8 +33,14 @@ mongodb:
   replicaSet:
     name: "rs0"
   storage:
-    size: 0.1Gi
-    storageClassName: longhorn-static
+    size: 1Gi
+    storageClassName: ""
+    createStorageClass: false
+    ebs:
+      type: gp3
+      fsType: ext4
+      iops: "3000"
+      throughput: "125"
   resources:
     requests:
       cpu: "100m"

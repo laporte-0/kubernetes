@@ -1,0 +1,17 @@
+{{- if and .Values.mongodb.enabled .Values.mongodb.storage.createStorageClass }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.mongodb.storage.storageClassName }}
+  labels:
+    {{- include "net4255.labels" . | nindent 4 }}
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+parameters:
+  type: {{ .Values.mongodb.storage.ebs.type | quote }}
+  fsType: {{ .Values.mongodb.storage.ebs.fsType | quote }}
+  iops: {{ .Values.mongodb.storage.ebs.iops | quote }}
+  throughput: {{ .Values.mongodb.storage.ebs.throughput | quote }}
+{{- end }}

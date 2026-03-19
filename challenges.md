@@ -417,3 +417,32 @@ terraform apply   # ~15 minutes
 
 - Shell syntax validation passed for all scripts (`bash -n`)
 - Scripts were marked executable (`chmod +x scripts/aws/*.sh`)
+
+## Challenge 31 — Helm Storage on EKS (MongoDB + EBS)
+
+**Objective:** Move MongoDB persistence from local/static storage assumptions to dynamic AWS EBS provisioning on EKS.
+
+### Root cause fixed:
+
+- In the previous template, MongoDB mounted an `emptyDir` at `/data/db`, which is ephemeral.
+- The PVC (`mongo-data`) was mounted at `/data/pvc`, so the database path was not using persistent storage.
+
+### What was implemented:
+
+| File | Change |
+|------|--------|
+| `net4255-chart/templates/mongodb-statefulset.yaml` | Removed `emptyDir` mount and mounted `mongo-data` PVC directly at `/data/db` |
+| `net4255-chart/templates/storageclass.yaml` | Added conditional AWS EBS CSI `StorageClass` template (`gp3`) |
+| `net4255-chart/values.yaml` | Added EBS storage settings (`createStorageClass`, `ebs.type`, `fsType`, `iops`, `throughput`) |
+| `net4255-chart/values-aws.yaml` | Added AWS-specific chart overrides including `storageClassName: gp3-net4255` |
+
+### Validation:
+
+```bash
+helm template test-release net4255-chart -f net4255-chart/values-aws.yaml
+```
+
+Verified in rendered manifests:
+- `kind: StorageClass` exists with name `gp3-net4255`
+- MongoDB pod mounts PVC at `/data/db`
+- No `emptyDir` for MongoDB data path
